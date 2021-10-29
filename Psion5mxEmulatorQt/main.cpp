@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     QString romFile;
 
 #ifdef Q_OS_WIN64
-        romFile=QString(qApp->applicationDirPath()).append(QString("/../../../WindEmu-master/WindQt/pkg_src/assets/5mx.rom"));
+        romFile=QString(qApp->applicationDirPath()).append(QString("/../../../Psion5mxEmulator-main/Psion5mxEmulatorQt/pkg_src/assets/5mx.rom"));
 #else // ANDROID
         romFile= "assets:5mx.rom";
  #endif"
