@@ -37,7 +37,7 @@ PDAScreenWindow::PDAScreenWindow(EmuBase *emu, QWidget *parent) :
 
     // Get Picture size
 #ifdef Q_OS_WIN64
-        m_pictureFile=QString(qApp->applicationDirPath()).append(QString("/../../../WindEmu-master/WindQt/pkg_src/assets/SERIES5MX.BMP"));
+        m_pictureFile=QString(qApp->applicationDirPath()).append(QString("/../../../Psion5mxEmulator-main/Psion5mxEmulatorQt/pkg_src/assets/SERIES5MX.BMP"));
 #else // Android
         m_pictureFile= QString("assets:SERIES5MX.BMP");
 
