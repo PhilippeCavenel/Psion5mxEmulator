@@ -128,7 +128,8 @@ public:
 	virtual void readLCDIntoBuffer(uint8_t **lines, bool is32BitOutput) const = 0;
 	virtual void setKeyboardKey(EpocKey key, bool value) = 0;
     virtual void updateTouchInput(int32_t x, int32_t y, bool down) = 0;
-    virtual void UartReadwriteData() = 0;
+    virtual void UartReadData() = 0;
+    virtual void UartWriteData() = 0;
     virtual void OpenSerialinterface() = 0;
 
 //#ifndef __EMSCRIPTEN__

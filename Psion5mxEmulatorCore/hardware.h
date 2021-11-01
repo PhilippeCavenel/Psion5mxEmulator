@@ -114,20 +114,20 @@ struct UART { // source serial_psionw.h
         AMBA_UARTFR_TXFF = 0x20,            // 0x20         /* Same as Psion UTXFF */
         AMBA_UARTFR_TMSK = AMBA_UARTFR_TXFF + AMBA_UARTFR_BUSY,
         PSIONW_UARTFR_MODEM_ANY	= (AMBA_UARTFR_DCD|AMBA_UARTFR_DSR|AMBA_UARTFR_CTS)
-
-
 	};
 
     // UART 0 information
 
     uint32_t UART1DATA_valueIn=0;                       // UART1 FIFO Data register In
     uint32_t UART1DATA_valueOut=0;                      // UART1 FIFO Data register Out
-    bool    UART1DATA_valueOutReady=false;              // UART1 FIFO Data register has new data
+    bool    UART1DATA_valueOutReady=false;              // UART1 FIFO Data register has new data out
+    bool    UART1DATA_valueInReady=false;               // UART1 FIFO Data register has new data in
     uint32_t UART1FCR_value=0;                          // Frame control register
     uint32_t UART1LCR_value=0;                          // Line control register, UBRCR
     uint32_t UART1CON_value=0;                          // Port control register
-    uint32_t UART1FLG_value=AMBA_UARTFR_RXFE |PSIONW_UARTFR_MODEM_ANY; // Flag register (Read only) UARTFLG
+  //  uint32_t UART1FLG_value=AMBA_UARTFR_RXFE |PSIONW_UARTFR_MODEM_ANY; // Flag register (Read only) UARTFLG
   //  uint32_t UART1FLG_value=AMBA_UARTFR_RXFE; // Flag register (Read only) UARTFLG
+    uint32_t UART1FLG_value=AMBA_UARTFR_RXFE|AMBA_UARTFR_DSR ; // Flag register (Read only) UARTFLG
 
     uint32_t UART1INT_value=0;                // Second level interrupt register
     uint32_t UART1INTM_value=0;               // Interrupt mask register
@@ -140,12 +140,14 @@ struct UART { // source serial_psionw.h
 
     uint32_t UART2DATA_valueIn=0;                       // UART2 FIFO Data register In
     uint32_t UART2DATA_valueOut=0;                      // UART2 FIFO Data register Out
-    bool    UART2DATA_valueOutReady=false;              // UART2 FIFO Data register has new data
+    bool    UART2DATA_valueOutReady=false;              // UART2 FIFO Data register has new data out
+    bool    UART2DATA_valueInReady=false;               // UART2 FIFO Data register has new data in
     uint32_t UART2FCR_value=0;                          // Frame control register
     uint32_t UART2LCR_value=0;                          // Line control register, UBRCR
     uint32_t UART2CON_value=0;                          // Port control register
-    uint32_t UART2FLG_value=AMBA_UARTFR_RXFE |PSIONW_UARTFR_MODEM_ANY; // Flag register (Read only) UARTFLG
+   // uint32_t UART2FLG_value=AMBA_UARTFR_RXFE |PSIONW_UARTFR_MODEM_ANY; // Flag register (Read only) UARTFLG
    // uint32_t UART2FLG_value=AMBA_UARTFR_RXFE; // Flag register (Read only) UARTFLG
+    uint32_t UART2FLG_value=AMBA_UARTFR_RXFE |AMBA_UARTFR_DSR ; // Flag register (Read only) UARTFLG
 
     uint32_t UART2INT_value=0;                // Second level interrupt register
     uint32_t UART2INTM_value=0;               // Interrupt mask register

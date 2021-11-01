@@ -395,14 +395,16 @@ void Emulator::executeUntil(int64_t cycles) {
 
     //QElapsedTimer timer;
     //timer.start();
-
 	if (!configured)
 		configure();
 
     // UART external link
-    if (!m_queue.isEmpty() || uart2.UART2DATA_valueOutReady) UartReadwriteData();
+    if (uart2.UART2DATA_valueInReady) UartReadData();
 
 	while (!asleep && passedCycles < cycles) {
+
+        // UART external link
+        if (uart2.UART2DATA_valueOutReady) UartWriteData();
 
 		if (passedCycles >= nextTickAt) {
 			// increment RTCDIV
@@ -425,7 +427,7 @@ void Emulator::executeUntil(int64_t cycles) {
 
         // UART interrupt
 
-        if ((uart1.UART2INTM_value & uart1.PSIONW_UART_TXINT)==uart1.PSIONW_UART_TXINT) {
+        if ((uart1.UART1INTM_value & uart1.PSIONW_UART_TXINT)==uart1.PSIONW_UART_TXINT) {
            pendingInterrupts |= (1 << UART1);
         }
 
@@ -448,7 +450,8 @@ void Emulator::executeUntil(int64_t cycles) {
         }
 
 		// what's running?
-		if (halted) {
+
+        if (halted) {
 			// keep the clock moving
 			// when does the next earliest thing happen?
 			// this stops us from spinning needlessly
@@ -456,8 +459,11 @@ void Emulator::executeUntil(int64_t cycles) {
 			if (tc1.nextTickAt < nextEvent) nextEvent = tc1.nextTickAt;
 			if (tc2.nextTickAt < nextEvent) nextEvent = tc2.nextTickAt;
 			if (cycles < nextEvent) nextEvent = cycles;
+            int64_t lastpassedCycles=passedCycles;
 			passedCycles = nextEvent;
-		} else {
+            if (lastpassedCycles==passedCycles) return; // added to fix a bug during psion backup
+
+        } else {
             if (auto v = virtToPhys(getGPR(15) - 0xC); v.has_value() && instructionReady()) {
                 // printf("The virtToPhys(getGPR(15) - 0xC); v.has_value() && instructionReady() operation took %d milliseconds",timer.elapsed());
 				debugPC(v.value());
@@ -478,6 +484,7 @@ void Emulator::executeUntil(int64_t cycles) {
 		}
 	}
     //printf("executeUntil = %d\n",timer.elapsed());
+
 }
 
 
@@ -795,21 +802,25 @@ void Emulator::updateTouchInput(int32_t x, int32_t y, bool down) {
 	touchY = y;
 }
 
-void Emulator::UartReadwriteData() {
+void Emulator::UartReadData() {
 
-    // Manage input data (We receive a data and send to the application)
-    char data;
     if (!m_queue.isEmpty()) {
         uart2.UART2DATA_valueIn=m_queue.dequeue();
-        // printf("Simulate received data (%c) on UART2\n",uart2.UART2DATA_valueIn);fflush(stdout);
+        //printf("r(0x%x) ",uart2.UART2DATA_valueIn);fflush(stdout);
         uart2.UART2FLG_value &= ~uart2.AMBA_UARTFR_RXFE;    // Input fifo is no more empty
-        uart2.UART2INTR_value|=uart2.PSIONW_UART_RXINT ;     //  set IrqUart2 to ask application to pick this data up
+        uart2.UART2INTR_value|=uart2.PSIONW_UART_RXINT ;    //  set IrqUart2 to ask application to pick this data up
         pendingInterrupts |= (1 << UART2);                  // Set irq
     }
+    uart2.UART2DATA_valueInReady=!m_queue.isEmpty();
 
+}
+
+void Emulator::UartWriteData() {
+
+    char data;
     if (uart2.UART2DATA_valueOutReady) {
         data=uart2.UART2DATA_valueOut;
-        //printf("UART2 write 0x%x (%c)\n ",data,data);
+        //printf("w(0x%x) ",data);fflush(stdout);
         m_serial.write(&data,1);
         uart2.UART2DATA_valueOutReady=false;
         uart2.UART2FLG_value &= ~uart2.AMBA_UARTFR_TXFF;
@@ -826,11 +837,12 @@ void Emulator::OpenSerialinterface() {
             if (m_serial.open(QIODevice::ReadWrite)) {
                 m_serial.setBaudRate(m_serial.Baud115200);
                 m_serial.setDataBits(m_serial.Data8);
-                m_serial.setStopBits(m_serial.TwoStop);
+                m_serial.setStopBits(m_serial.OneStop);
                 m_serial.setParity(m_serial.NoParity);
                 m_serial.setFlowControl(m_serial.NoFlowControl);
                 m_serial.setRequestToSend(true);
                 m_serial.setDataTerminalReady(true);
+                m_serial.setReadBufferSize(2048);
 
                 qDebug() << "Name : " << info.portName();
                 qDebug() << "Description : " << info.description();
@@ -845,6 +857,7 @@ void Emulator::OpenSerialinterface() {
            while(m_serial.read(&data,1)==1){
                m_queue.enqueue(data);
            }
+           uart2.UART2DATA_valueInReady=true;
        });
    }
    qDebug()  << "Serial analysis stops";

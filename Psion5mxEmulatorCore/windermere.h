@@ -84,7 +84,8 @@ public:
 	void readLCDIntoBuffer(uint8_t **lines, bool is32BitOutput) const override;
 	void setKeyboardKey(EpocKey key, bool value) override;
 	void updateTouchInput(int32_t x, int32_t y, bool down) override;
-    void UartReadwriteData() override;
+    void UartReadData() override;
+    void UartWriteData() override;
     void OpenSerialinterface() override;
 };
 }

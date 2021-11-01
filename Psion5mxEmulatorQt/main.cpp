@@ -11,13 +11,6 @@
 #include <QtSerialPort/QSerialPortInfo>
 #include <QDebug>
 
-
-void Engine::run()
-{
- // TODO
-}
-
-
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
@@ -28,7 +21,7 @@ int main(int argc, char *argv[])
         romFile=QString(qApp->applicationDirPath()).append(QString("/../../../Psion5mxEmulator-main/Psion5mxEmulatorQt/pkg_src/assets/5mx.rom"));
 #else // ANDROID
         romFile= "assets:5mx.rom";
- #endif"
+#endif
 
 	// what do we have?
     QFile f(romFile);
@@ -62,30 +55,8 @@ int main(int argc, char *argv[])
 	}
 
 	emu->loadROM(romData, buffer.size());
-    Engine threadEngine;
 
-/*    // Test Serial I/O
-    // Example use QSerialPortInfo
-    qDebug()  << "Serial analysis starts";
-   foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts()) {
-       qDebug() << "Name : " << info.portName();
-       qDebug() << "Description : " << info.description();
-       qDebug() << "Manufacturer: " << info.manufacturer();
-       // Example use QSerialPort
-       QSerialPort serial;
-       serial.setPort(info);
-       if (info.portName()=="COM2") {
-            if (serial.open(QIODevice::ReadWrite)) {
-                qDebug() << "OPEN CONNECTION ON SELECTED DEVICE";
-                serial.close();
-            }
-       }
-   }
-   qDebug()  << "Serial analysis stops"; */
-
-   // threadEngine.start(); // Not used
     MainWindow w(emu);
-   //  threadEngine.wait();
 
 
 return a.exec();

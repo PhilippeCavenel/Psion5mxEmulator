@@ -66,7 +66,7 @@ Etna::Etna(ARM710 *owner) {
 
     // give ourselves a neat custom device name
     const char *key = "PSIONPSIONPSION";
-    const char *name = "WindEmu!";
+    const char *name = "Psion5mxEmulator!";
     prom[0x28] = strlen(name);
     if (prom[0x28] > 15)
         prom[0x28] = 15;

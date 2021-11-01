@@ -113,7 +113,7 @@ uint32_t ARM710::tick() {
 		if (insnFault != NoFault) {
 			// Raise a prefetch error
 			// These do not set FSR or FAR
-            // log("prefetch error! %08x", insnFault >> MMUFaultAddressShift);
+            // printf("prefetch error! %08x", insnFault >> MMUFaultAddressShift);fflush(stdout);
 			logPcHistory();
 			raiseException(Abort32, GPRs[15] - 8, 0xC);
 		} else {

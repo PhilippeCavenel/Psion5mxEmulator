@@ -22,19 +22,12 @@ MainWindow::MainWindow(EmuBase *emu, QWidget *parent) :
     timer_2->setInterval(250); // each 0.25 s
     connect(timer_2, SIGNAL(timeout()), SLOT(execTimer_2()));
 
-    // Timer to internal testing
-    timer_3 = new QTimer(this);
-    timer_3->setInterval(10); // each 10ms for testing purpose only
-    connect(timer_3, SIGNAL(timeout()), SLOT(execTimer_3()));
-
     pdaScreen.show();
     timer_1->start(); // To run main emulator loop
     timer_2->start(); // To refresh QT screen
 
     // Simulate serial link
     emu->OpenSerialinterface();
-
-    //timer_3->start(); // to scan serial I/O
 }
 
 
@@ -57,11 +50,5 @@ void MainWindow::execTimer_2()
         pdaScreen.updateScreen();
     }
 }
-void MainWindow::execTimer_3()
-{
 
-    if (emu)  {
-     //emu->UartReadwriteData();
-    }
-}
 

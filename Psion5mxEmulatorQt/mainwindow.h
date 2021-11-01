@@ -11,10 +11,6 @@
 class Engine : public QThread
 {
     Q_OBJECT
-public:
-// TODO
-private:
-    void run();
 };
 
 namespace Ui {
@@ -32,7 +28,6 @@ public:
 private slots:
     void execTimer_1();
     void execTimer_2();
-    void execTimer_3();
 
 private:
 	QElapsedTimer elapsedTimer;
@@ -41,7 +36,6 @@ private:
 	EmuBase *emu;
     QTimer *timer_1;
     QTimer *timer_2;
-    QTimer *timer_3;
 };
 
 #endif // MAINWINDOW_H
