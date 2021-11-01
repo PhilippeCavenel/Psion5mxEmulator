@@ -1,3 +1,13 @@
+/* Code modified version Copyright (c) 2021 Philippe Cavenel
+ *
+ * This Source Code Form is subject to the terms of the
+ * GNU GENERAL PUBLIC LICENSE Version 2, June 1991.
+ *
+ * The Psion-specific code is copyright (c) 2019 Ash Wolf.
+ * The ARM disassembly code is a modified version of the one used in mGBA by endrift.
+ * WindEmu is available under the Mozilla Public License 2.0.
+*/
+
 #pragma once
 #include "arm710.h"
 #include <unordered_set>
@@ -115,8 +125,21 @@ public:
 
 	virtual uint8_t *getROMBuffer() = 0;
 	virtual size_t getROMSize() = 0;
-	virtual void loadROM(uint8_t *buffer, size_t size) = 0;
-	virtual void executeUntil(int64_t cycles) = 0;
+    virtual void loadROM(uint8_t *buffer, size_t size) = 0;
+    virtual void loadRAMC0(uint8_t *buffer, size_t size) = 0;
+    virtual void loadRAMC1(uint8_t *buffer, size_t size) = 0;
+    virtual void loadRAMD0(uint8_t *buffer, size_t size) = 0;
+    virtual void loadRAMD1(uint8_t *buffer, size_t size) = 0;
+    virtual uint8_t *getRAMC0() = 0;
+    virtual uint8_t *getRAMC1() = 0;
+    virtual uint8_t *getRAMD0() = 0;
+    virtual uint8_t *getRAMD1() = 0;
+    virtual uint32_t getRAMsizeC0() = 0;
+    virtual uint32_t getRAMsizeC1() = 0;
+    virtual uint32_t getRAMsizeD0() = 0;
+    virtual uint32_t getRAMsizeD1() = 0;
+
+    virtual void executeUntil(int64_t cycles) = 0;
 	virtual int32_t getClockSpeed() const = 0;
 	virtual const char *getDeviceName() const = 0;
 	virtual int getDigitiserWidth() const = 0;
@@ -136,5 +159,20 @@ public:
 //	std::unordered_set<uint32_t> &breakpoints() { return _breakpoints; }
 //#endif
 	uint64_t currentCycles() const { return passedCycles; }
+
+public:
+
+    bool configured = false;
+    bool getRamFromDisk=false;
+    uint32_t pwrsr = 0x00002000; // cold start flag
+    uint16_t pendingInterrupts = 0;
+    uint16_t interruptMask = 0;
+    uint32_t portValues = 0;
+    uint32_t portDirections = 0;
+    uint32_t lcdControl = 0;
+    uint32_t lcdAddress = 0;
+    uint32_t rtc = 0;
+    uint16_t lastSSIRequest = 0;
+    int ssiReadCounter = 0;
 };
 

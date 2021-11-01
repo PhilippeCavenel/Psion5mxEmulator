@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 5.0.2, 2021-10-31T11:45:13. -->
+<!-- Written by QtCreator 5.0.2, 2021-11-01T19:51:47. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -84,6 +84,9 @@
     <valuelist type="QVariantList" key="ClangTools.SelectedFiles"/>
     <valuelist type="QVariantList" key="ClangTools.SuppressedDiagnostics"/>
     <value type="bool" key="ClangTools.UseGlobalSettings">true</value>
+   </valuemap>
+   <valuemap type="QVariantMap" key="CppEditor.QuickFix">
+    <value type="bool" key="UseGlobalSettings">true</value>
    </valuemap>
   </valuemap>
  </data>
@@ -237,8 +240,9 @@
     <valuelist type="QVariantList" key="CustomOutputParsers"/>
     <value type="int" key="PE.EnvironmentAspect.Base">2</value>
     <valuelist type="QVariantList" key="PE.EnvironmentAspect.Changes"/>
-    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:D:/PSION/Psion5mxEmulator-main/Psion5mxEmulatorQt/Psion5mxEmulatorQt.pro</value>
-    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">D:/PSION/Psion5mxEmulator-main/Psion5mxEmulatorQt/Psion5mxEmulatorQt.pro</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.DisplayName">Psion5mxEmulatorQt2</value>
+    <value type="QString" key="ProjectExplorer.ProjectConfiguration.Id">Qt4ProjectManager.Qt4RunConfiguration:D:/PSION/Psion5mxEmulator/Psion5mxEmulatorQt/Psion5mxEmulatorQt.pro</value>
+    <value type="QString" key="ProjectExplorer.RunConfiguration.BuildKey">D:/PSION/Psion5mxEmulator/Psion5mxEmulatorQt/Psion5mxEmulatorQt.pro</value>
     <value type="bool" key="RunConfiguration.UseCppDebugger">false</value>
     <value type="bool" key="RunConfiguration.UseCppDebuggerAuto">true</value>
     <value type="bool" key="RunConfiguration.UseLibrarySearchPath">true</value>

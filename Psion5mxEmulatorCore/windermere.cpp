@@ -1,12 +1,24 @@
+/* Code modified version Copyright (c) 2021 Philippe Cavenel
+ *
+ * This Source Code Form is subject to the terms of the
+ * GNU GENERAL PUBLIC LICENSE Version 2, June 1991.
+ *
+ * The Psion-specific code is copyright (c) 2019 Ash Wolf.
+ * The ARM disassembly code is a modified version of the one used in mGBA by endrift.
+ * WindEmu is available under the Mozilla Public License 2.0.
+*/
+
 #include "windermere.h"
 #include "wind_defs.h"
 #include "hardware.h"
 #include <time.h>
 #include "common.h"
+#include <QFileDialog>
+#include <QApplication>
 
 
-//#define INCLUDE_D
-//#define INCLUDE_BANK1
+#define INCLUDE_D
+// #define INCLUDE_BANK1 // Doesn't work.... to be fixed
 
 namespace Windermere {
 Emulator::Emulator() : EmuBase(true), etna(this) {
@@ -58,7 +70,7 @@ uint32_t Emulator::readReg32(uint32_t reg) {
         //printf("LCD state read pc=%08x lr=%08x !!!\n", getGPR(15), getGPR(14));
 		return 0xFFFFFFFF;
 	} else if (reg == PWRSR) {
-//		printf("!!! PWRSR read pc=%08x lr=%08x !!!\n", getGPR(15), getGPR(14));
+        // printf("!!! PWRSR read pc=%08x lr=%08x pwrsr=%08x!!!\n", getGPR(15), getGPR(14),pwrsr);
 		return pwrsr;
 	} else if (reg == INTSR) {
 		return pendingInterrupts & interruptMask;
@@ -358,12 +370,10 @@ bool Emulator::writePhysical(uint32_t value, uint32_t physAddr, ValueSize valueS
 }
 
 
-
 void Emulator::configure() {
 
-	if (configured) return;
-	configured = true;
-
+    if (configured) return;
+    configured = true;
 	srand(1000);
 
     uart1.cpu = this;
@@ -376,9 +386,8 @@ void Emulator::configure() {
 	nextTickAt = TICK_INTERVAL;
 	tc1.nextTickAt = tc1.tickInterval();
 	tc2.nextTickAt = tc2.tickInterval();
-	rtc = getRTC();
-
-	reset();
+    rtc = getRTC();
+    reset();
 }
 
 uint8_t *Emulator::getROMBuffer() {
@@ -388,7 +397,46 @@ size_t Emulator::getROMSize() {
 	return sizeof(ROM);
 }
 void Emulator::loadROM(uint8_t *buffer, size_t size) {
-	memcpy(ROM, buffer, min(size, sizeof(ROM)));
+    memcpy(ROM, buffer, min(size, sizeof(ROM)));
+}
+
+void Emulator::loadRAMC0(uint8_t *buffer, size_t size) {
+    memcpy(MemoryBlockC0, buffer, min(size, sizeof(MemoryBlockC0)));
+}
+void Emulator::loadRAMC1(uint8_t *buffer, size_t size) {
+    memcpy(MemoryBlockC1, buffer, min(size, sizeof(MemoryBlockC1)));
+}
+void Emulator::loadRAMD0(uint8_t *buffer, size_t size) {
+    memcpy(MemoryBlockD0, buffer, min(size, sizeof(MemoryBlockD0)));
+}
+void Emulator::loadRAMD1(uint8_t *buffer, size_t size) {
+    memcpy(MemoryBlockD1, buffer, min(size, sizeof(MemoryBlockD1)));
+}
+
+uint8_t *Emulator::getRAMC0() {
+    return MemoryBlockC0;
+}
+uint8_t *Emulator::getRAMC1() {
+    return MemoryBlockC1;
+}
+uint8_t *Emulator::getRAMD0() {
+    return MemoryBlockD0;
+}
+uint8_t *Emulator::getRAMD1() {
+    return MemoryBlockD1;
+}
+
+uint32_t Emulator::getRAMsizeC0() {
+    return sizeof(MemoryBlockC0);
+}
+uint32_t Emulator::getRAMsizeC1() {
+    return sizeof(MemoryBlockC1);
+}
+uint32_t Emulator::getRAMsizeD0() {
+    return sizeof(MemoryBlockD0);
+}
+uint32_t Emulator::getRAMsizeD1() {
+    return sizeof(MemoryBlockD1);
 }
 
 void Emulator::executeUntil(int64_t cycles) {
@@ -463,7 +511,7 @@ void Emulator::executeUntil(int64_t cycles) {
         } else {
             if (auto v = virtToPhys(getGPR(15) - 0xC); v.has_value() && instructionReady()) {
                 // printf("The virtToPhys(getGPR(15) - 0xC); v.has_value() && instructionReady() operation took %d milliseconds",timer.elapsed());
-				debugPC(v.value());
+                 debugPC(v.value());
                // printf("The debugPC() operation took %d milliseconds",timer.elapsed());
 
             }
@@ -524,6 +572,7 @@ void Emulator::fetchProcessFilename(uint32_t obj, char *buf) {
 
 void Emulator::debugPC(uint32_t pc) {
 	char objName[1000];
+
 	if (pc == 0x2CBC4) {
 		// CObjectCon::AddL()
 		uint32_t container = getGPR(0);
@@ -659,18 +708,18 @@ void Emulator::diffPorts(uint32_t oldval, uint32_t newval) {
     //if (changes & 0x20) printf("PRT pump pwr2: %d\n", newval&0x20);
     //if (changes & 0x40) printf("PRT pump pwr1: %d\n", newval&0x40);
     //if (changes & 0x80) printf("PRT etna err: %d\n", newval&0x80);
-    if (changes & 0x100) printf("PRT rs-232 rts: %d\n", newval&0x100);fflush(stdout);
-    if (changes & 0x200) printf("PRT rs-232 dtr toggle: %d\n", newval&0x200);fflush(stdout);
-    //if (changes & 0x400) printf("PRT disable power led: %d\n", newval&0x400);
-    if (changes & 0x800) printf("PRT enable uart1: %d\n", newval&0x800);fflush(stdout);
-   // if (changes & 0x1000) printf("PRT lcd backlight: %d\n", newval&0x1000);
-    if (changes & 0x2000) printf("PRT enable uart2: %d\n", newval&0x2000);fflush(stdout);
+    // if (changes & 0x100) printf("PRT rs-232 rts: %d\n", newval&0x100);fflush(stdout);
+    // if (changes & 0x200) printf("PRT rs-232 dtr toggle: %d\n", newval&0x200);fflush(stdout);
+    // if (changes & 0x400) printf("PRT disable power led: %d\n", newval&0x400);
+    // if (changes & 0x800) printf("PRT enable uart1: %d\n", newval&0x800);fflush(stdout);
+    // if (changes & 0x1000) printf("PRT lcd backlight: %d\n", newval&0x1000);
+    // if (changes & 0x2000) printf("PRT enable uart2: %d\n", newval&0x2000);fflush(stdout);
     //if (changes & 0x4000) printf("PRT dictaphone: %d\n", newval&0x4000);
-// PROM read process makes this super spammy in stdout
-//	if (changes & 0x10000) printf("PRT EECS: %d\n", newval&0x10000);
-//	if (changes & 0x20000) printf("PRT EECLK: %d\n", newval&0x20000);
-   // if (changes & 0x40000) printf("PRT contrast0: %d\n", newval&0x40000);
-   // if (changes & 0x80000) printf("PRT contrast1: %d\n", newval&0x80000);
+    // PROM read process makes this super spammy in stdout
+    //	if (changes & 0x10000) printf("PRT EECS: %d\n", newval&0x10000);
+    //	if (changes & 0x20000) printf("PRT EECLK: %d\n", newval&0x20000);
+    // if (changes & 0x40000) printf("PRT contrast0: %d\n", newval&0x40000);
+    // if (changes & 0x80000) printf("PRT contrast1: %d\n", newval&0x80000);
     //if (changes & 0x100000) printf("PRT contrast2: %d\n", newval&0x100000);
     //if (changes & 0x200000) printf("PRT contrast3: %d\n", newval&0x200000);
     //if (changes & 0x400000) printf("PRT case open: %d\n", newval&0x400000);
@@ -691,8 +740,8 @@ void Emulator::diffInterrupts(uint16_t oldval, uint16_t newval) {
     //if (changes & 0x200) printf("INTCHG timer2=%d\n", newval & 0x200);
     //if (changes & 0x400) printf("INTCHG rtcmatch=%d\n", newval & 0x400);
     //if (changes & 0x800) printf("INTCHG tick=%d\n", newval & 0x800);
-    if (changes & 0x1000) printf("INTCHG uart1=%d\n", newval & 0x1000);fflush(stdout);
-    if (changes & 0x2000) printf("INTCHG uart2=%d\n", newval & 0x2000);fflush(stdout);
+    //if (changes & 0x1000) printf("INTCHG uart1=%d\n", newval & 0x1000);fflush(stdout);
+    // if (changes & 0x2000) printf("INTCHG uart2=%d\n", newval & 0x2000);fflush(stdout);
     //if (changes & 0x4000) printf("INTCHG lcd=%d\n", newval & 0x4000);
    // if (changes & 0x8000) printf("INTCHG spi=%d\n", newval & 0x8000);
 }

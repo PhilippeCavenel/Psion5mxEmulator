@@ -1,6 +1,16 @@
 #pragma once
 #include "emubase.h"
 #include "wind_defs.h"
+/* Code modified version Copyright (c) 2021 Philippe Cavenel
+ *
+ * This Source Code Form is subject to the terms of the
+ * GNU GENERAL PUBLIC LICENSE Version 2, June 1991.
+ *
+ * The Psion-specific code is copyright (c) 2019 Ash Wolf.
+ * The ARM disassembly code is a modified version of the one used in mGBA by endrift.
+ * WindEmu is available under the Mozilla Public License 2.0.
+*/
+
 #include "hardware.h"
 #include "etna.h"
 #include <QtSerialPort/QSerialPort>
@@ -19,19 +29,10 @@ public:
     uint8_t MemoryBlockD1[0x800000];
     enum { MemoryBlockMask = 0x7FFFFF };
 
+
     QSerialPort m_serial;
 
 private:
-    uint16_t pendingInterrupts = 0;
-    uint16_t interruptMask = 0;
-    uint32_t portValues = 0;
-    uint32_t portDirections = 0;
-    uint32_t pwrsr = 0x00002000; // cold start flag
-    uint32_t lcdControl = 0;
-    uint32_t lcdAddress = 0;
-    uint32_t rtc = 0;
-	uint16_t lastSSIRequest = 0;
-	int ssiReadCounter = 0;
 
 	uint32_t kScan = 0;
 	uint8_t keyboardColumns[8] = {0,0,0,0,0,0,0};
@@ -39,8 +40,8 @@ private:
 
     Timer tc1, tc2;
     UART uart1, uart2;
-    Etna etna;
 	bool halted = false, asleep = false;
+    Etna etna;
     QQueue<char> m_queue;
 
     uint32_t getRTC();
@@ -55,7 +56,6 @@ public:
 	bool writePhysical(uint32_t value, uint32_t physAddr, ValueSize valueSize) override;
 
 private:
-    bool configured = false;
     void configure();
 
     const char *identifyObjectCon(uint32_t ptr);
@@ -72,7 +72,19 @@ public:
 	uint8_t *getROMBuffer() override;
 	size_t getROMSize() override;
 	void loadROM(uint8_t *buffer, size_t size) override;
-	void executeUntil(int64_t cycles) override;
+    void loadRAMC0(uint8_t *buffer, size_t size) override;
+    void loadRAMC1(uint8_t *buffer, size_t size) override;
+    void loadRAMD0(uint8_t *buffer, size_t size) override;
+    void loadRAMD1(uint8_t *buffer, size_t size) override;
+    uint8_t *getRAMC0() override;
+    uint8_t *getRAMC1() override;
+    uint8_t *getRAMD0() override;
+    uint8_t *getRAMD1() override;
+    uint32_t getRAMsizeC0() override;
+    uint32_t getRAMsizeC1() override;
+    uint32_t getRAMsizeD0() override;
+    uint32_t getRAMsizeD1() override;
+    void executeUntil(int64_t cycles) override;
 	int32_t getClockSpeed() const override { return CLOCK_SPEED; }
 	const char *getDeviceName() const override;
 	int getDigitiserWidth() const override;

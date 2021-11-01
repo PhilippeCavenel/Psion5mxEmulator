@@ -87,6 +87,7 @@ public:
 		cp15_faultStatus = 0;
 		cp15_faultAddress = 0;
 		prefetchCount = 0;
+        //printf("All values cleared\n");fflush(stdout);
 #ifdef ARM710T_CACHE
 		clearCache();
 #endif

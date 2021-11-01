@@ -1,4 +1,13 @@
 #-------------------------------------------------
+# Code modified version Copyright (c) 2021 Philippe Cavenel
+#
+# This Source Code Form is subject to the terms of the
+# GNU GENERAL PUBLIC LICENSE Version 2, June 1991.
+#
+# The Psion-specific code is copyright (c) 2019 Ash Wolf.
+# The ARM disassembly code is a modified version of the one used in mGBA by endrift.
+# WindEmu is available under the Mozilla Public License 2.0.
+#-------------------------------------------------
 #
 # Project created by QtCreator 2019-12-18T16:17:36
 #
@@ -31,8 +40,7 @@ HEADERS += \
         mainwindow.h \
         pdascreenwindow.h
 
-FORMS += \
-        mainwindow.ui
+FORMS +=
 
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/pkg_src
 
