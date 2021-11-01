@@ -398,12 +398,10 @@ void Emulator::executeUntil(int64_t cycles) {
 	if (!configured)
 		configure();
 
-    // UART external link
-    if (uart2.UART2DATA_valueInReady) UartReadData();
-
 	while (!asleep && passedCycles < cycles) {
 
-        // UART external link
+        // UART2 external link
+        if (uart2.UART2DATA_valueInReady && uart2.UART2DATA_lastValueRead) UartReadData();
         if (uart2.UART2DATA_valueOutReady) UartWriteData();
 
 		if (passedCycles >= nextTickAt) {
@@ -450,7 +448,6 @@ void Emulator::executeUntil(int64_t cycles) {
         }
 
 		// what's running?
-
         if (halted) {
 			// keep the clock moving
 			// when does the next earliest thing happen?
@@ -806,6 +803,7 @@ void Emulator::UartReadData() {
 
     if (!m_queue.isEmpty()) {
         uart2.UART2DATA_valueIn=m_queue.dequeue();
+        uart2.UART2DATA_lastValueRead=false;
         //printf("r(0x%x) ",uart2.UART2DATA_valueIn);fflush(stdout);
         uart2.UART2FLG_value &= ~uart2.AMBA_UARTFR_RXFE;    // Input fifo is no more empty
         uart2.UART2INTR_value|=uart2.PSIONW_UART_RXINT ;    //  set IrqUart2 to ask application to pick this data up
@@ -833,7 +831,7 @@ void Emulator::OpenSerialinterface() {
    foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts()) {
 
        m_serial.setPort(info);
-       if (info.portName()=="COM2") {
+       if (info.portName()=="COM2") { // To improve later
             if (m_serial.open(QIODevice::ReadWrite)) {
                 m_serial.setBaudRate(m_serial.Baud115200);
                 m_serial.setDataBits(m_serial.Data8);
@@ -857,7 +855,7 @@ void Emulator::OpenSerialinterface() {
            while(m_serial.read(&data,1)==1){
                m_queue.enqueue(data);
            }
-           uart2.UART2DATA_valueInReady=true;
+           uart2.UART2DATA_valueInReady=!m_queue.isEmpty();
        });
    }
    qDebug()  << "Serial analysis stops";

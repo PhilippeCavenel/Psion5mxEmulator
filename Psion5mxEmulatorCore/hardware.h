@@ -122,6 +122,7 @@ struct UART { // source serial_psionw.h
     uint32_t UART1DATA_valueOut=0;                      // UART1 FIFO Data register Out
     bool    UART1DATA_valueOutReady=false;              // UART1 FIFO Data register has new data out
     bool    UART1DATA_valueInReady=false;               // UART1 FIFO Data register has new data in
+    bool    UART1DATA_lastValueRead=true;               // UART1 FIFO Data register last value read
     uint32_t UART1FCR_value=0;                          // Frame control register
     uint32_t UART1LCR_value=0;                          // Line control register, UBRCR
     uint32_t UART1CON_value=0;                          // Port control register
@@ -142,6 +143,7 @@ struct UART { // source serial_psionw.h
     uint32_t UART2DATA_valueOut=0;                      // UART2 FIFO Data register Out
     bool    UART2DATA_valueOutReady=false;              // UART2 FIFO Data register has new data out
     bool    UART2DATA_valueInReady=false;               // UART2 FIFO Data register has new data in
+    bool    UART2DATA_lastValueRead=true;               // UART1 FIFO Data register last value read
     uint32_t UART2FCR_value=0;                          // Frame control register
     uint32_t UART2LCR_value=0;                          // Line control register, UBRCR
     uint32_t UART2CON_value=0;                          // Port control register
@@ -169,6 +171,7 @@ struct UART { // source serial_psionw.h
             writeReg8(UART1FLG,AMBA_UARTFR_RXFE | UART1FLG_value); // Data is read, set received fifo empty
            // printf("Remove interrupt flag to read data =>");
             writeReg8(UART1INTR,UART1INTR_value & ~PSIONW_UART_RXINT);
+            UART1DATA_lastValueRead=true;
             return(UART1DATA_valueIn);
         case UART1FCR:
            /* printf("Read UART1FCR == break=%d parityEn=%d evenParity=%d extraStop=%d ufifoEn=%d wrdLen=%d\n",
@@ -225,6 +228,7 @@ struct UART { // source serial_psionw.h
             writeReg8(UART2FLG,AMBA_UARTFR_RXFE | UART2FLG_value); // Data is read, set received fifo empty
            // printf("Remove interrupt flag to read data =>");
             writeReg8(UART2INTR,UART2INTR_value & ~PSIONW_UART_RXINT);
+            UART2DATA_lastValueRead=true;
             return(UART2DATA_valueIn);
         case UART2FCR:
            /* printf("Read UART2FCR == break=%d parityEn=%d evenParity=%d extraStop=%d ufifoEn=%d wrdLen=%d\n",
