@@ -85,8 +85,7 @@ Etna::Etna(ARM710 *owner) {
 
     // calculate the checksum
     uint8_t chk = 0;
-    for (int i = 0; i < 0x7F; i++)
-        chk ^= prom[i];
+    for (int i = 0; i < 0x7F; i++) chk ^= prom[i];
 
     // EPOC is expecting 66
 	prom[0x7F] = chk ^ 66;

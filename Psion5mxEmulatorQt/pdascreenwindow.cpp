@@ -84,11 +84,15 @@ PDAScreenWindow::PDAScreenWindow(EmuBase *emu, QWidget *parent) :
 }
 
 void PDAScreenWindow::updateScreen() {
-	uint8_t *lines[1024];
+    uint8_t *lines[1024];
     QImage img(emu->getLCDWidth(), emu->getLCDHeight(), QImage::Format_RGB32);
     for (int y = 0; y < img.height(); y++)
 		lines[y] = img.scanLine(y);
     emu->readLCDIntoBuffer(lines, true);
+
+ /*  QImage img(emu->getLCDWidth(), emu->getLCDHeight(), QImage::Format_RGB32);
+      emu->readLCDColorIntoBuffer(lines, true);*/
+
     QString pictureFile;
 
 #ifdef Q_OS_WIN64

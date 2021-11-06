@@ -69,9 +69,9 @@ int main(int argc, char *argv[])
 	}
 
     emu->loadROM(romData, bufferRom.size());
-    MainWindow w(emu);
-    int ret = a.exec();
 
+    // Default value is we can't read RAM
+    emu->pwrsr=0x2000; // Cold start
 
     // Read RAM => Need to know how to update it inside the application
 
@@ -113,13 +113,13 @@ int main(int argc, char *argv[])
         }
 
         fRamFile.close();
-        emu->getRamFromDisk=true;
+        emu->pwrsr=0x800; // Hardware reset
 
     }
 
    // If we call after initialization with the saved RAM, it works !
-    MainWindow w1(emu);
-   ret = a.exec();
+    MainWindow w(emu);
+    int ret = a.exec();
 
     // Save RAM
     if (emu)  {

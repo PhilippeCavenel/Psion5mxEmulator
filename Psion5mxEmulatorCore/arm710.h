@@ -58,8 +58,6 @@ public:
 		MMUFaultAddressShift    = 32
 	};
 
-
-
 	ARM710(bool _isTVersion) {
 		isTVersion = _isTVersion;
 		cp15_id = _isTVersion ? 0x41807100 : 0x41047100;

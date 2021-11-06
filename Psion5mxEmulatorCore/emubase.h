@@ -11,6 +11,7 @@
 #pragma once
 #include "arm710.h"
 #include <unordered_set>
+#include <QImage>
 
 enum EpocKey {
 	EStdKeyDial = 161,
@@ -148,8 +149,9 @@ public:
 	virtual int getLCDOffsetY() const = 0;
 	virtual int getLCDWidth() const = 0;
 	virtual int getLCDHeight() const = 0;
-	virtual void readLCDIntoBuffer(uint8_t **lines, bool is32BitOutput) const = 0;
-	virtual void setKeyboardKey(EpocKey key, bool value) = 0;
+    virtual void readLCDIntoBuffer(uint8_t **lines, bool is32BitOutput) const = 0;
+    virtual void readLCDColorIntoBuffer(uint8_t **lines, bool is32BitOutput) const = 0;
+    virtual void setKeyboardKey(EpocKey key, bool value) = 0;
     virtual void updateTouchInput(int32_t x, int32_t y, bool down) = 0;
     virtual void UartReadData() = 0;
     virtual void UartWriteData() = 0;
@@ -161,18 +163,8 @@ public:
 	uint64_t currentCycles() const { return passedCycles; }
 
 public:
+    //uint32_t pwrsr = 0x00002000; // cold start flag
+    uint32_t pwrsr = 0;
 
-    bool configured = false;
-    bool getRamFromDisk=false;
-    uint32_t pwrsr = 0x00002000; // cold start flag
-    uint16_t pendingInterrupts = 0;
-    uint16_t interruptMask = 0;
-    uint32_t portValues = 0;
-    uint32_t portDirections = 0;
-    uint32_t lcdControl = 0;
-    uint32_t lcdAddress = 0;
-    uint32_t rtc = 0;
-    uint16_t lastSSIRequest = 0;
-    int ssiReadCounter = 0;
 };
 

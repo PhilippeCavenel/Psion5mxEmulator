@@ -17,6 +17,7 @@
 #include <QtSerialPort/QSerialPortInfo>
 #include <QDebug>
 #include <QQueue>
+#include <QImage>
 
 namespace Windermere {
 class Emulator : public EmuBase {
@@ -30,6 +31,17 @@ public:
     enum { MemoryBlockMask = 0x7FFFFF };
 
 
+    bool configured = false;
+
+    uint16_t pendingInterrupts = 0;
+    uint16_t interruptMask = 0;
+    uint32_t portValues = 0;
+    uint32_t portDirections = 0;
+    uint32_t lcdControl = 0;
+    uint32_t lcdAddress = 0;
+    uint32_t rtc = 0;
+    uint16_t lastSSIRequest = 0;
+    int ssiReadCounter = 0;
     QSerialPort m_serial;
 
 private:
@@ -93,8 +105,9 @@ public:
 	int getLCDOffsetY() const override;
 	int getLCDWidth() const override;
 	int getLCDHeight() const override;
-	void readLCDIntoBuffer(uint8_t **lines, bool is32BitOutput) const override;
-	void setKeyboardKey(EpocKey key, bool value) override;
+    void readLCDIntoBuffer(uint8_t **lines, bool is32BitOutput) const override;
+    void readLCDColorIntoBuffer(uint8_t **lines, bool is32BitOutput) const override;
+    void setKeyboardKey(EpocKey key, bool value) override;
 	void updateTouchInput(int32_t x, int32_t y, bool down) override;
     void UartReadData() override;
     void UartWriteData() override;

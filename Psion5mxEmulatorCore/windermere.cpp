@@ -64,8 +64,8 @@ uint32_t Emulator::readReg8(uint32_t reg) {
 }
 uint32_t Emulator::readReg32(uint32_t reg) {
 	if (reg == LCDCTL) {
-        //printf("LCD control read pc=%08x lr=%08x !!!\n", getGPR(15), getGPR(14));
-		return lcdControl;
+        //printf("LCD control read lcdControl = %d pc=%08x lr=%08x !!!\n", lcdControl, getGPR(15), getGPR(14));fflush(stdout);
+        return lcdControl;
 	} else if (reg == LCDST) {
         //printf("LCD state read pc=%08x lr=%08x !!!\n", getGPR(15), getGPR(14));
 		return 0xFFFFFFFF;
@@ -182,7 +182,7 @@ void Emulator::writeReg8(uint32_t reg, uint8_t value) {
 }
 void Emulator::writeReg32(uint32_t reg, uint32_t value) {
 	if (reg == LCDCTL) {
-    //	printf("LCD: ctl write %08x\n", value);
+        //printf("LCD: ctl write %08x\n", value);fflush(stdout);
 		lcdControl = value;
 	} else if (reg == LCD_DBAR1) {
     //	printf("LCD: address write %08x\n", value);
@@ -508,13 +508,13 @@ void Emulator::executeUntil(int64_t cycles) {
 			passedCycles = nextEvent;
             if (lastpassedCycles==passedCycles) return; // added to fix a bug during psion backup
 
-        } else {
+        } /* else {
             if (auto v = virtToPhys(getGPR(15) - 0xC); v.has_value() && instructionReady()) {
                 // printf("The virtToPhys(getGPR(15) - 0xC); v.has_value() && instructionReady() operation took %d milliseconds",timer.elapsed());
                  debugPC(v.value());
                // printf("The debugPC() operation took %d milliseconds",timer.elapsed());
 
-            }
+            }*/
 			passedCycles += tick();
 
 /*
@@ -526,7 +526,7 @@ void Emulator::executeUntil(int64_t cycles) {
 			}
 #endif
 */
-		}
+        //}
 	}
     //printf("executeUntil = %d\n",timer.elapsed());
 
@@ -687,8 +687,8 @@ void Emulator::readLCDIntoBuffer(uint8_t **lines, bool is32BitOutput) const {
 
 				if (is32BitOutput) {
 					auto line = (uint32_t *)lines[y];
-					line[x] = rgbValues[palValue];
-				} else {
+                    line[x] = rgbValues[palValue];
+                } else {
 					palValue |= (palValue << 4);
 					lines[y][x] = palValue ^ 0xFF;
 				}
@@ -697,6 +697,8 @@ void Emulator::readLCDIntoBuffer(uint8_t **lines, bool is32BitOutput) const {
 	}
 }
 
+void Emulator::readLCDColorIntoBuffer(uint8_t **lines, bool is32BitOutput) const {
+}
 
 void Emulator::diffPorts(uint32_t oldval, uint32_t newval) {
 	uint32_t changes = oldval ^ newval;
