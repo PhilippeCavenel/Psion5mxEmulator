@@ -183,7 +183,7 @@ void Emulator::writeReg8(uint32_t reg, uint8_t value) {
 void Emulator::writeReg32(uint32_t reg, uint32_t value) {
 	if (reg == LCDCTL) {
         //printf("LCD: ctl write %08x\n", value);fflush(stdout);
-		lcdControl = value;
+		lcdControl = value;              
 	} else if (reg == LCD_DBAR1) {
     //	printf("LCD: address write %08x\n", value);
         lcdAddress = value;
@@ -310,6 +310,19 @@ MaybeU32 Emulator::readPhysical(uint32_t physAddr, ValueSize valueSize) {
 
 bool Emulator::writePhysical(uint32_t value, uint32_t physAddr, ValueSize valueSize) {
 	uint8_t region = (physAddr >> 24) & 0xF1;
+
+    //check if must refresh the screen
+    if ((physAddr & MemoryBlockMask) >= (lcdAddress & MemoryBlockMask) &&
+        (physAddr & MemoryBlockMask) <= (lcdAddress & MemoryBlockMask)+(getLCDWidth()*getLCDHeight())+PALETTE_SIZE) {
+        m_accessLcdFrameMemory=true;
+    }
+    else {
+        if (m_accessLcdFrameMemory) {
+            m_screenRefresh=true;
+            m_accessLcdFrameMemory=false;
+        }
+    }
+
 	if (valueSize == V8) {
 #if defined(INCLUDE_BANK1)
 		if (region == 0xC0)
@@ -495,7 +508,9 @@ void Emulator::executeUntil(int64_t cycles) {
             }
         }
 
-		// what's running?
+        int64_t lastpassedCycles=passedCycles; // added to fix a bug during psion backup and restore
+
+        // what's running?
         if (halted) {
 			// keep the clock moving
 			// when does the next earliest thing happen?
@@ -504,18 +519,17 @@ void Emulator::executeUntil(int64_t cycles) {
 			if (tc1.nextTickAt < nextEvent) nextEvent = tc1.nextTickAt;
 			if (tc2.nextTickAt < nextEvent) nextEvent = tc2.nextTickAt;
 			if (cycles < nextEvent) nextEvent = cycles;
-            int64_t lastpassedCycles=passedCycles;
 			passedCycles = nextEvent;
-            if (lastpassedCycles==passedCycles) return; // added to fix a bug during psion backup
 
-        } /* else {
+        }  /*else {
             if (auto v = virtToPhys(getGPR(15) - 0xC); v.has_value() && instructionReady()) {
                 // printf("The virtToPhys(getGPR(15) - 0xC); v.has_value() && instructionReady() operation took %d milliseconds",timer.elapsed());
                  debugPC(v.value());
                // printf("The debugPC() operation took %d milliseconds",timer.elapsed());
-
-            }*/
-			passedCycles += tick();
+            }
+        }*/
+        passedCycles += tick();
+        if (lastpassedCycles==passedCycles) return; // added to fix a bug during psion backup and restore
 
 /*
 #ifndef __EMSCRIPTEN__
@@ -891,7 +905,6 @@ void Emulator::OpenSerialinterface() {
                 m_serial.setFlowControl(m_serial.NoFlowControl);
                 m_serial.setRequestToSend(true);
                 m_serial.setDataTerminalReady(true);
-                m_serial.setReadBufferSize(2048);
 
                 qDebug() << "Name : " << info.portName();
                 qDebug() << "Description : " << info.description();
@@ -901,10 +914,12 @@ void Emulator::OpenSerialinterface() {
        }
        QObject::connect(&m_serial, &QSerialPort::readyRead, [&]
        {
+
            //this is called when readyRead() is emitted
            char data;
            while(m_serial.read(&data,1)==1){
                m_queue.enqueue(data);
+               if (m_queue.size()>MAX_UART_QUEUE_SIZE)return;
            }
            uart2.UART2DATA_valueInReady=!m_queue.isEmpty();
        });

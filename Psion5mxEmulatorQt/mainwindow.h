@@ -36,8 +36,7 @@ public:
     ~MainWindow() override;
 
 private slots:
-    void execTimer_1();
-    void execTimer_2();
+    void execTimer();
 
 
 private:
@@ -46,7 +45,6 @@ private:
 	PDAScreenWindow pdaScreen;
 	EmuBase *emu;
     QTimer *timer_1;
-    QTimer *timer_2;
 
 };
 

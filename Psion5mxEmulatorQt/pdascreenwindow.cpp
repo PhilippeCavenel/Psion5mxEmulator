@@ -87,7 +87,7 @@ void PDAScreenWindow::updateScreen() {
     uint8_t *lines[1024];
     QImage img(emu->getLCDWidth(), emu->getLCDHeight(), QImage::Format_RGB32);
     for (int y = 0; y < img.height(); y++)
-		lines[y] = img.scanLine(y);
+        lines[y] = img.scanLine(y);
     emu->readLCDIntoBuffer(lines, true);
 
  /*  QImage img(emu->getLCDWidth(), emu->getLCDHeight(), QImage::Format_RGB32);
@@ -150,7 +150,7 @@ void PDAScreenWindow::keyPressEvent(QKeyEvent *event)
     if (k != EStdKeyNull)
         emu->setKeyboardKey(k, true);
 
-   updateScreen();
+   //updateScreen();
 
 }
 
@@ -169,7 +169,7 @@ void PDAScreenWindow::mousePressEvent(QMouseEvent *event)
     emu->updateTouchInput(event->x()-m_xOrig, event->y()-m_yOrig, true);
 #endif
 
-    updateScreen();
+    //updateScreen();
 
 }
 
@@ -181,7 +181,7 @@ void PDAScreenWindow::mouseReleaseEvent(QMouseEvent *event)
     emu->updateTouchInput(event->x()-m_xOrig, event->y()-m_yOrig, false);
 #endif
 
-    updateScreen();
+    //updateScreen();
 
 }
 
@@ -193,7 +193,7 @@ void PDAScreenWindow::mouseMoveEvent(QMouseEvent *event)
 #else
         emu->updateTouchInput(event->x()-m_xOrig, event->y()-m_yOrig, true);
 #endif
-    updateScreen();
+    //updateScreen();
     }
 
 }

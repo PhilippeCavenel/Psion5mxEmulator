@@ -26,17 +26,10 @@ MainWindow::MainWindow(EmuBase *emu, QWidget *parent) :
     // Timer for main CPU loop
     timer_1 = new QTimer(this);
     timer_1->setInterval(1000/64);
-    connect(timer_1, SIGNAL(timeout()), SLOT(execTimer_1()));
-
-    // Timer for screen
-    timer_2 = new QTimer(this);
-    timer_2->setInterval(250); // each 0.25 s
-    connect(timer_2, SIGNAL(timeout()), SLOT(execTimer_2()));
+    connect(timer_1, SIGNAL(timeout()), SLOT(execTimer()));
 
     pdaScreen.show();
     timer_1->start(); // To run main emulator loop
-    timer_2->start(); // To refresh QT screen
-
 
     // Simulate serial link
     emu->OpenSerialinterface();
@@ -49,20 +42,18 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::execTimer_1()
+void MainWindow::execTimer()
 {
 
     if (emu)  {
         emu->executeUntil(emu->currentCycles() + (emu->getClockSpeed() / 64));
+        if (emu->m_screenRefresh) {
+            pdaScreen.updateScreen();
+            emu->m_screenRefresh=false;
+        }
     }
+}
 
-}
-void MainWindow::execTimer_2()
-{
-    if (emu) {
-        pdaScreen.updateScreen();
-    }
-}
 
 
 

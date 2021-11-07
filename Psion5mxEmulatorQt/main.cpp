@@ -117,7 +117,6 @@ int main(int argc, char *argv[])
 
     }
 
-   // If we call after initialization with the saved RAM, it works !
     MainWindow w(emu);
     int ret = a.exec();
 

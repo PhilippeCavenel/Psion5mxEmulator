@@ -12,6 +12,7 @@
 #include "arm710.h"
 #include <unordered_set>
 #include <QImage>
+#include <QTimer>
 
 enum EpocKey {
 	EStdKeyDial = 161,
@@ -165,6 +166,8 @@ public:
 public:
     //uint32_t pwrsr = 0x00002000; // cold start flag
     uint32_t pwrsr = 0;
+    bool m_screenRefresh=false;
+    bool m_accessLcdFrameMemory=false;
 
 };
 

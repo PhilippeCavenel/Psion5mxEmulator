@@ -28,6 +28,8 @@ private:
     int m_xOrig;
     int m_yOrig;
     QString m_pictureFile;
+    uint8_t *m_lines[1024];
+
 
 public:
 	explicit PDAScreenWindow(EmuBase *emu, QWidget *parent = nullptr);

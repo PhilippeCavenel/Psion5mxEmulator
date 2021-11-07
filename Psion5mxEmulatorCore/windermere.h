@@ -19,6 +19,9 @@
 #include <QQueue>
 #include <QImage>
 
+#define MAX_UART_QUEUE_SIZE 5
+#define PALETTE_SIZE 4048
+
 namespace Windermere {
 class Emulator : public EmuBase {
 public:
@@ -37,8 +40,8 @@ public:
     uint16_t interruptMask = 0;
     uint32_t portValues = 0;
     uint32_t portDirections = 0;
-    uint32_t lcdControl = 0;
     uint32_t lcdAddress = 0;
+    uint32_t lcdControl = 0;
     uint32_t rtc = 0;
     uint16_t lastSSIRequest = 0;
     int ssiReadCounter = 0;
