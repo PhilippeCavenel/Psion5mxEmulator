@@ -9,10 +9,22 @@
 */
 
 #pragma once
+
+
 #include "arm710.h"
 #include <unordered_set>
 #include <QImage>
 #include <QTimer>
+#include <QIODevice>
+#include <QAudioDevice>
+#include <QAudioSink>
+#include <QMediaDevices>
+#include <QMainWindow>
+#include <QtSerialPort/QSerialPort>
+#include <QtSerialPort/QSerialPortInfo>
+#include <QDebug>
+#include <QQueue>
+#include <QImage>
 
 enum EpocKey {
 	EStdKeyDial = 161,
@@ -168,6 +180,7 @@ public:
     uint32_t pwrsr = 0;
     bool m_screenRefresh=false;
     bool m_accessLcdFrameMemory=false;
+
 
 };
 

@@ -65,7 +65,7 @@ enum Register {
 	PUMPCON = 0x900,
 	CODR = 0xA00,
 	CONFG = 0xA04,
-	COLFG = 0xA08,
+    COFLG = 0xA08,
 	COEOI = 0xA0C,
 	COTEST = 0xA10,
 	SSCR0 = 0xB00,
@@ -97,6 +97,6 @@ enum Register {
 	PEDR = 0xE20,
 	PEDDR = 0xE24,
 	KSCAN = 0xE28,
-	LCDMUX = 0xE2C
+    LCDMUX = 0xE2C
 };
 }

@@ -16,19 +16,139 @@
 #include <QFileDialog>
 #include <QApplication>
 
-
 #define INCLUDE_D
 // #define INCLUDE_BANK1 // Doesn't work.... to be fixed
 
 namespace Windermere {
-Emulator::Emulator() : EmuBase(true), etna(this) {
+
+Generator::Generator(const QAudioFormat &format, qint64 durationUs, int sampleRate)
+{
+    if (format.isValid())
+        generateData(format, durationUs, sampleRate);
 }
 
+void Generator::start()
+{
+    open(QIODevice::ReadOnly);
+}
+
+void Generator::stop()
+{
+    m_pos = 0;
+    close();
+}
+
+void Generator::generateData(const QAudioFormat &format, qint64 durationUs, int sampleRate)
+{
+    const int channelBytes = format.bytesPerSample();
+    const int sampleBytes = format.channelCount() * channelBytes;
+    qint64 length = format.bytesForDuration(durationUs);
+    Q_ASSERT(length % sampleBytes == 0);
+    Q_UNUSED(sampleBytes); // suppress warning in release builds
+
+    m_buffer.resize(length);
+    unsigned char *ptr = reinterpret_cast<unsigned char *>(m_buffer.data());
+    int sampleIndex = 0;
+
+    while (length) {
+        // Produces value (-1..1)
+        const qreal x = qSin(2 * M_PI * sampleRate * qreal(sampleIndex++ % format.sampleRate()) / format.sampleRate());
+        for (int i=0; i<format.channelCount(); ++i) {
+            switch(format.sampleFormat()) {
+            case QAudioFormat::UInt8:
+                *reinterpret_cast<quint8 *>(ptr) = static_cast<quint8>((1.0 + x) / 2 * 255);
+                break;
+            case QAudioFormat::Int16:
+                *reinterpret_cast<qint16 *>(ptr) = static_cast<qint16>(x * 32767);
+                break;
+            case QAudioFormat::Int32:
+                *reinterpret_cast<qint32 *>(ptr) = static_cast<qint32>(x * std::numeric_limits<qint32>::max());
+                break;
+            case QAudioFormat::Float:
+                *reinterpret_cast<float *>(ptr) = x;
+                break;
+            default:
+                break;
+            }
+
+            ptr += channelBytes;
+            length -= channelBytes;
+        }
+    }
+}
+
+qint64 Generator::readData(char *data, qint64 len)
+{
+    qint64 total = 0;
+    if (!m_buffer.isEmpty()) {
+        while (len - total > 0) {
+            const qint64 chunk = qMin((m_buffer.size() - m_pos), len - total);
+            memcpy(data + total, m_buffer.constData() + m_pos, chunk);
+            m_pos = (m_pos + chunk) % m_buffer.size();
+            total += chunk;
+        }
+    }
+    return total;
+}
+
+qint64 Generator::writeData(const char *data, qint64 len)
+{
+    Q_UNUSED(data);
+    Q_UNUSED(len);
+
+    return 0;
+}
+
+qint64 Generator::bytesAvailable() const
+{
+    return m_buffer.size() + QIODevice::bytesAvailable();
+}
+
+AudioTest::AudioTest()
+    : m_devices(new QMediaDevices(this))
+{
+    initializeAudio(m_devices->defaultAudioOutput());
+}
+
+AudioTest::~AudioTest()
+{
+}
+
+void AudioTest::BuzzerStart(){
+   volumeChanged(100);
+}
+
+void AudioTest::BuzzerStop(){
+    volumeChanged(0);
+}
+
+void AudioTest::initializeAudio(const QAudioDevice &deviceInfo)
+{
+    QAudioFormat format = deviceInfo.preferredFormat();
+
+    const int durationSeconds = 1;
+    const int toneSampleRateHz = 600;
+    m_generator.reset(new Generator(format, durationSeconds * 1000000, toneSampleRateHz));
+    m_audioOutput.reset(new QAudioSink(deviceInfo, format));
+    m_generator->start();
+    m_audioOutput->start(m_generator.data());
+}
+
+void AudioTest::volumeChanged(int value)
+{
+    qreal linearVolume = QAudio::convertVolume(value / qreal(100),
+                                               QAudio::LogarithmicVolumeScale,
+                                               QAudio::LinearVolumeScale);
+
+    m_audioOutput->setVolume(linearVolume);
+}
+
+Emulator::Emulator() : EmuBase(true), etna(this) {
+}
 
 uint32_t Emulator::getRTC() {
     return time(nullptr) - 946684800;
 }
-
 
 uint32_t Emulator::readReg8(uint32_t reg) {
 	if ((reg & 0xF00) == 0x600) {
@@ -58,7 +178,7 @@ uint32_t Emulator::readReg8(uint32_t reg) {
 	} else if (reg == PDDDR) {
 		return portDirections & 0xFF;
 	} else {
-      //  printf("RegRead8 unknown:: pc=%08x lr=%08x reg=%03x\n", getGPR(15)-4, getGPR(14), reg);
+      // printf("RegRead8 unknown:: pc=%08x lr=%08x reg=%03x\n", getGPR(15)-4, getGPR(14), reg);
 		return 0xFF;
 	}
 }
@@ -97,7 +217,6 @@ uint32_t Emulator::readReg32(uint32_t reg) {
 		case 0xA4A4: ssiValue = 3100; break; // MainBattery
 		case 0xE4E4: ssiValue = 3100; break; // BackupBattery
 		}
-
 		uint32_t ret = 0;
 		if (ssiReadCounter == 4) ret = (ssiValue >> 5) & 0x7F;
 		if (ssiReadCounter == 5) ret = (ssiValue << 3) & 0xF8;
@@ -119,8 +238,17 @@ uint32_t Emulator::readReg32(uint32_t reg) {
         return v;
     } else if (reg == KSCAN) {
         return kScan;
-    } else {
-      //  printf("RegRead32 unknown:: pc=%08x lr=%08x reg=%03x\n", getGPR(15)-4, getGPR(14), reg);
+    } else if (reg == CONFG) {
+        printf("read CONFG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,confg);
+        return confg;
+    } else if (reg == COFLG) {
+        printf("read COFLG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,coflg);
+        return coflg;
+    } else if (reg == BZCONT) {
+        printf("read BZCONT :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,bzcont);
+    return bzcont;
+}else {
+       //  printf("RegRead32 unknown:: pc=%08x lr=%08x reg=%03x\n", getGPR(15)-4, getGPR(14), reg);
 		return 0xFFFFFFFF;
 	}
 }
@@ -176,8 +304,15 @@ void Emulator::writeReg8(uint32_t reg, uint8_t value) {
 		portDirections |= (uint32_t)value;
     } else if (reg == KSCAN) {
         kScan = value;
-    } else {
-    //    printf("RegWrite8 unknown:: pc=%08x reg=%03x value=%02x\n", getGPR(15)-4, reg, value);
+    } else if (reg == CONFG) {
+        confg = value;
+    } else if (reg == BZCONT) {
+        // printf("write BZCONT :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,bzcont);
+        bzcont = value;
+        if (bzcont & 1 == 1) m_audio.BuzzerStart();
+        else m_audio.BuzzerStop();
+    }else {
+       // printf("RegWrite8 unknown:: pc=%08x reg=%03x value=%02x\n", getGPR(15)-4, reg, value);
 	}
 }
 void Emulator::writeReg32(uint32_t reg, uint32_t value) {
@@ -233,8 +368,16 @@ void Emulator::writeReg32(uint32_t reg, uint32_t value) {
 		rtc &= 0x0000FFFF;
 		rtc |= (value & 0xFFFF) << 16;
         //log("RTC write upper: %04x", value);
+    } else if (reg==CODR){
+        printf("CODR write : %08x", value);fflush(stdout);
+    } else if (reg==CONFG){
+        printf("CONFG write : %08x", value);fflush(stdout);
+        confg=value;
+    } else if (reg == BZCONT) {
+       // printf("BZCONT write : %08x", value);fflush(stdout);
+        bzcont = value;
 	} else {
-     //   printf("RegWrite32 unknown:: pc=%08x reg=%03x value=%08x\n", getGPR(15)-4, reg, value);
+       // printf("RegWrite32 unknown:: pc=%08x reg=%03x value=%08x\n", getGPR(15)-4, reg, value);
 	}
 }
 
@@ -388,7 +531,6 @@ void Emulator::configure() {
     if (configured) return;
     configured = true;
 	srand(1000);
-
     uart1.cpu = this;
     uart2.cpu = this;
 	memset(&tc1, 0, sizeof(tc1));
@@ -896,7 +1038,7 @@ void Emulator::OpenSerialinterface() {
    foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts()) {
 
        m_serial.setPort(info);
-       if (info.portName()=="COM2") { // To improve later
+       if (info.description()=="com0com - serial port emulator") {
             if (m_serial.open(QIODevice::ReadWrite)) {
                 m_serial.setBaudRate(m_serial.Baud115200);
                 m_serial.setDataBits(m_serial.Data8);
@@ -919,7 +1061,6 @@ void Emulator::OpenSerialinterface() {
            char data;
            while(m_serial.read(&data,1)==1){
                m_queue.enqueue(data);
-               if (m_queue.size()>MAX_UART_QUEUE_SIZE)return;
            }
            uart2.UART2DATA_valueInReady=!m_queue.isEmpty();
        });

@@ -13,7 +13,7 @@
 #
 #-------------------------------------------------
 
-QT       += core gui widgets serialport
+QT       += core gui widgets serialport multimedia
 
 TARGET = Psion5mxEmulatorQt
 TEMPLATE = app

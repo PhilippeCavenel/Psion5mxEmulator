@@ -1,6 +1,3 @@
-#pragma once
-#include "emubase.h"
-#include "wind_defs.h"
 /* Code modified version Copyright (c) 2021 Philippe Cavenel
  *
  * This Source Code Form is subject to the terms of the
@@ -11,18 +8,62 @@
  * WindEmu is available under the Mozilla Public License 2.0.
 */
 
+#pragma once
+#include "emubase.h"
+#include "wind_defs.h"
 #include "hardware.h"
 #include "etna.h"
-#include <QtSerialPort/QSerialPort>
-#include <QtSerialPort/QSerialPortInfo>
-#include <QDebug>
-#include <QQueue>
-#include <QImage>
+#include <math.h>
 
-#define MAX_UART_QUEUE_SIZE 5
-#define PALETTE_SIZE 4048
+#define PALETTE_SIZE 4096 // 4Kbytes
 
 namespace Windermere {
+class Generator : public QIODevice
+{
+    Q_OBJECT
+
+public:
+    Generator(const QAudioFormat &format, qint64 durationUs, int sampleRate);
+
+    void start();
+    void stop();
+
+    qint64 readData(char *data, qint64 maxlen) override;
+    qint64 writeData(const char *data, qint64 len) override;
+    qint64 bytesAvailable() const override;
+    qint64 size() const override { return m_buffer.size(); }
+
+private:
+    void generateData(const QAudioFormat &format, qint64 durationUs, int sampleRate);
+
+private:
+    qint64 m_pos = 0;
+    QByteArray m_buffer;
+};
+
+class AudioTest : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    AudioTest();
+    ~AudioTest();
+    void BuzzerStart();
+    void BuzzerStop();
+
+private:
+    void initializeAudio(const QAudioDevice &deviceInfo);
+
+
+private:
+    QMediaDevices *m_devices = nullptr;
+    QScopedPointer<Generator> m_generator;
+    QScopedPointer<QAudioSink> m_audioOutput;
+
+private slots:
+    void volumeChanged(int);
+};
+
 class Emulator : public EmuBase {
 public:
     uint8_t ROM[0x1000000];
@@ -43,9 +84,13 @@ public:
     uint32_t lcdAddress = 0;
     uint32_t lcdControl = 0;
     uint32_t rtc = 0;
+    uint32_t confg = 0;
+    uint32_t coflg = 0;
+    uint32_t bzcont = 0;
     uint16_t lastSSIRequest = 0;
     int ssiReadCounter = 0;
     QSerialPort m_serial;
+    AudioTest m_audio;
 
 private:
 

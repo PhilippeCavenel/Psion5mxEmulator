@@ -113,6 +113,7 @@ void PDAScreenWindow::updateScreen() {
 
     painter.end();
     lcd->setPixmap(pixmap);
+
 }
 
 static EpocKey resolveKey(int key, int vk) {

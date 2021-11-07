@@ -12,11 +12,12 @@
 #
 #-------------------------------------------------
 
-QT       += core gui widgets
+QT += multimedia widgets core gui
 
 TARGET = Psion5mxEmulatorCore
 TEMPLATE = lib
 CONFIG += staticlib c++17
+
 android : DEFINES += "SHOW_IN_FULL_SCREEN"
 
 # The following define makes your compiler emit warnings if you use
