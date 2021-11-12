@@ -132,15 +132,15 @@ uint32_t Emulator::readReg8(uint32_t reg) {
     } else if (reg == KSCAN) {
         return kScan;
     } else if (reg == CODR) {
-        printf("read CODR :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,codr);
+     //   printf("read CODR :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,codr);
         codecLastValueRead=true;
         coflg |=1; // Receive fifo is empty
         return codr;
     } else if (reg == CONFG) {
-       printf("read CONFG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,confg);
+     //  printf("read CONFG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,confg);
     return confg;
     } else if (reg == COFLG) {
-       printf("read COFLG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,coflg);
+     //  printf("read COFLG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,coflg);
         return coflg;
     } else if (reg == BZCONT) {
        // printf("read BZCONT :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,bzcont);
@@ -282,13 +282,13 @@ void Emulator::writeReg8(uint32_t reg, uint32_t value) {
             coflg|=2; // transmit fifo full
         }
 
-        printf("CODR write : %08x\n", value);fflush(stdout);
+     //   printf("CODR write : %08x\n", value);fflush(stdout);
     } else if (reg==CONFG){
-        printf("CONFG write : %08x\n", value);fflush(stdout);
+      //  printf("CONFG write : %08x\n", value);fflush(stdout);
         confg=value;
         if ((confg & 3) == 3) pendingInterrupts |= (1 << CSINT); // Set CODEC irq
     } else if (reg==COEOI){
-        printf("COEOI write : %08x\n", value);fflush(stdout);
+      //  printf("COEOI write : %08x\n", value);fflush(stdout);
         pendingInterrupts &= ~(1 << CSINT);                  // Unset CODEC irq
     }else {
        //  printf("RegWrite unknown:: pc=%08x reg=%03x value=%02x\n", getGPR(15)-4, reg, value);fflush(stdout);
@@ -481,8 +481,9 @@ void Emulator::configure() {
 	tc1.clockSpeed = CLOCK_SPEED;
 	tc2.clockSpeed = CLOCK_SPEED;
 
-	nextTickAt = TICK_INTERVAL;
-	tc1.nextTickAt = tc1.tickInterval();
+    nextTickAt = TICK_INTERVAL;
+    nextCodecAt = CODEC_INTERVAL;
+    tc1.nextTickAt = tc1.tickInterval();
 	tc2.nextTickAt = tc2.tickInterval();
     rtc = getRTC();
     reset();
@@ -550,14 +551,10 @@ uint32_t Emulator::getRAMsizeD1() {
 ////////////////////////////////////////////////////////////////////////////
 void Emulator::executeUntil(int64_t cycles) {
 
-    //QElapsedTimer timer;
-    //timer.start();
+   // QElapsedTimer timer;
+   // timer.start();
 	if (!configured)
 		configure();
-
-    // CODEC
-    if (codecValueInReady && codecLastValueRead) { CodecReadData(); }
-    if (codecValueOutReady) {CodecWriteData(); }
 
 	while (!asleep && passedCycles < cycles) {
 
@@ -565,10 +562,16 @@ void Emulator::executeUntil(int64_t cycles) {
         if (uart2.UART2DATA_valueInReady && uart2.UART2DATA_lastValueRead) UartReadData();
         if (uart2.UART2DATA_valueOutReady) UartWriteData();
 
-		if (passedCycles >= nextTickAt) {
+        if (passedCycles >= nextCodecAt) { // every 1/1000 secondes
+            if (codecValueInReady && codecLastValueRead) { CodecReadData(); }
+            if (codecValueOutReady) {CodecWriteData(); }
+            nextCodecAt+= CODEC_INTERVAL;
+        }
+
+        if (passedCycles >= nextTickAt) { // every 1/64 secondes
 			// increment RTCDIV
 			if ((pwrsr & 0x3F) == 0x3F) {
-				rtc++;
+                rtc++; // Real Time Clock, every 1 second
 				pwrsr &= ~0x3F;
 			} else {
 				pwrsr++;
@@ -582,6 +585,7 @@ void Emulator::executeUntil(int64_t cycles) {
                 pendingInterrupts |= (1<<TC1OI);
             if (tc2.tick(passedCycles))
                 pendingInterrupts |= (1<<TC2OI);
+
         }
 
         // UART interrupt
@@ -1045,12 +1049,12 @@ void Emulator::UartReadData() {
 ////////////////////////////////////////////////////////////////////////////
 void Emulator::CodecWriteData() {
 
-    printf("CodecWriteData()\n");fflush(stdout);
+   // printf("CodecWriteData()\n");fflush(stdout);
 
     char data;
     if (codecValueOutReady) {
         data=codr;
-        printf("w(0x%x) ",data);fflush(stdout);
+      //  printf("w(0x%x) ",data);fflush(stdout);
 
         // Write here to output codec TODO
 

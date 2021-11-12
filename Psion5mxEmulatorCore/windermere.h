@@ -42,7 +42,7 @@ public:
     uint32_t    codr = 0;
     int         codrCounter=0;
     uint32_t    confg = 0;
-    uint32_t    coflg = 1; // Receive fifo is empty for TEST
+    uint32_t    coflg = 1; // Receive and transmit fifo are empty
     uint32_t    bzcont = 0;
     uint16_t    lastSSIRequest = 0;
     int         ssiReadCounter = 0;

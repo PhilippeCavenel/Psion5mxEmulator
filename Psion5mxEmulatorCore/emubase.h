@@ -131,8 +131,9 @@ protected:
 //	std::unordered_set<uint32_t> _breakpoints;
 //#endif
 	int64_t passedCycles = 0;
-	int64_t nextTickAt = 0;
-	uint8_t readKeyboard(int kScan);
+    int64_t nextTickAt = 0;
+    int64_t nextCodecAt = 0;
+    uint8_t readKeyboard(int kScan);
 
 public:
 	EmuBase(bool isTVersion) : ARM710(isTVersion) { }

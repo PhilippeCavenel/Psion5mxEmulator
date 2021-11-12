@@ -13,7 +13,8 @@
 namespace Windermere {
 enum {
     CLOCK_SPEED = 0x9000*1000,
-    TICK_INTERVAL = CLOCK_SPEED / 64
+    TICK_INTERVAL = CLOCK_SPEED / 64,
+    CODEC_INTERVAL = CLOCK_SPEED / 1000
 };
 
 enum Interrupt { // source psionw.h
