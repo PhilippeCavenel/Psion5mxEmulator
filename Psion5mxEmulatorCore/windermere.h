@@ -14,56 +14,11 @@
 #include "hardware.h"
 #include "etna.h"
 #include <math.h>
+#include <QSoundEffect>
 
 #define PALETTE_SIZE 4096 // 4Kbytes
 
 namespace Windermere {
-class Generator : public QIODevice
-{
-    Q_OBJECT
-
-public:
-    Generator(const QAudioFormat &format, qint64 durationUs, int sampleRate);
-
-    void start();
-    void stop();
-
-    qint64 readData(char *data, qint64 maxlen) override;
-    qint64 writeData(const char *data, qint64 len) override;
-    qint64 bytesAvailable() const override;
-    qint64 size() const override { return m_buffer.size(); }
-
-private:
-    void generateData(const QAudioFormat &format, qint64 durationUs, int sampleRate);
-
-private:
-    qint64 m_pos = 0;
-    QByteArray m_buffer;
-};
-
-class AudioTest : public QMainWindow
-{
-    Q_OBJECT
-
-public:
-    AudioTest();
-    ~AudioTest();
-    void BuzzerStart();
-    void BuzzerStop();
-
-private:
-    void initializeAudio(const QAudioDevice &deviceInfo);
-
-
-private:
-    QMediaDevices *m_devices = nullptr;
-    QScopedPointer<Generator> m_generator;
-    QScopedPointer<QAudioSink> m_audioOutput;
-
-private slots:
-    void volumeChanged(int);
-};
-
 class Emulator : public EmuBase {
 public:
     uint8_t ROM[0x1000000];
@@ -90,7 +45,11 @@ public:
     uint16_t lastSSIRequest = 0;
     int ssiReadCounter = 0;
     QSerialPort m_serial;
-    AudioTest m_audio;
+    bool buzzerOn=false;
+    float buzzerVolume=0;
+
+public:
+    void BuzzerStart();
 
 private:
 
@@ -103,6 +62,7 @@ private:
 	bool halted = false, asleep = false;
     Etna etna;
     QQueue<char> m_queue;
+    QSoundEffect effect;
 
     uint32_t getRTC();
 
@@ -110,6 +70,7 @@ private:
     uint32_t readReg32(uint32_t reg);
     void writeReg8(uint32_t reg, uint8_t value);
     void writeReg32(uint32_t reg, uint32_t value);
+
 
 public:
 	MaybeU32 readPhysical(uint32_t physAddr, ValueSize valueSize) override;
