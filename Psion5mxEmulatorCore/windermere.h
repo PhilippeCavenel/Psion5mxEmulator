@@ -32,21 +32,27 @@ public:
 
     bool configured = false;
 
-    uint16_t pendingInterrupts = 0;
-    uint16_t interruptMask = 0;
-    uint32_t portValues = 0;
-    uint32_t portDirections = 0;
-    uint32_t lcdAddress = 0;
-    uint32_t lcdControl = 0;
-    uint32_t rtc = 0;
-    uint32_t confg = 0;
-    uint32_t coflg = 0;
-    uint32_t bzcont = 0;
-    uint16_t lastSSIRequest = 0;
-    int ssiReadCounter = 0;
+    uint16_t    pendingInterrupts = 0;
+    uint16_t    interruptMask = 0;
+    uint32_t    portValues = 0;
+    uint32_t    portDirections = 0;
+    uint32_t    lcdAddress = 0;
+    uint32_t    lcdControl = 0;
+    uint32_t    rtc = 0;
+    uint32_t    codr = 0;
+    int         codrCounter=0;
+    uint32_t    confg = 0;
+    uint32_t    coflg = 1; // Receive fifo is empty for TEST
+    uint32_t    bzcont = 0;
+    uint16_t    lastSSIRequest = 0;
+    int         ssiReadCounter = 0;
     QSerialPort m_serial;
-    bool buzzerOn=false;
-    float buzzerVolume=0;
+    bool        buzzerOn=false;
+    float       buzzerVolume=0;
+    bool        codecValueOutReady=false;
+    bool        codecValueInReady=false; // Receive fifo is empty
+    bool        codecLastValueRead=true;
+
 
 public:
     void BuzzerStart();
@@ -61,14 +67,16 @@ private:
     UART uart1, uart2;
 	bool halted = false, asleep = false;
     Etna etna;
-    QQueue<char> m_queue;
+    QQueue<char> m_uartQueue;
+
     QSoundEffect effect;
+    QQueue<char> m_codecQueue;
 
     uint32_t getRTC();
 
     uint32_t readReg8(uint32_t reg);
     uint32_t readReg32(uint32_t reg);
-    void writeReg8(uint32_t reg, uint8_t value);
+    void writeReg8(uint32_t reg, uint32_t value);
     void writeReg32(uint32_t reg, uint32_t value);
 
 
@@ -121,5 +129,7 @@ public:
     void UartReadData() override;
     void UartWriteData() override;
     void OpenSerialinterface() override;
+    void CodecReadData() override;
+    void CodecWriteData() override;
 };
 }

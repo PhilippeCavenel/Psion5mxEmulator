@@ -20,14 +20,23 @@
 // #define INCLUDE_BANK1 // Doesn't work.... to be fixed
 
 namespace Windermere {
-
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::Emulator
+////////////////////////////////////////////////////////////////////////////
 Emulator::Emulator() : EmuBase(true), etna(this) {
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::getRTC
+/// \return
+////////////////////////////////////////////////////////////////////////////
 uint32_t Emulator::getRTC() {
     return time(nullptr) - 946684800;
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::BuzzerStart
+////////////////////////////////////////////////////////////////////////////
 void Emulator::BuzzerStart(){
     printf("buzzerVolume(%l)\n",buzzerVolume);fflush(stdout);
     effect.setLoopCount(1);
@@ -35,7 +44,11 @@ void Emulator::BuzzerStart(){
     effect.play();
 }
 
-
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::readReg8
+/// \param reg
+/// \return
+////////////////////////////////////////////////////////////////////////////
 uint32_t Emulator::readReg8(uint32_t reg) {
 	if ((reg & 0xF00) == 0x600) {
         pendingInterrupts &= ~(1 << UART1);
@@ -63,57 +76,51 @@ uint32_t Emulator::readReg8(uint32_t reg) {
 		return (portDirections >> 8) & 0xFF;
 	} else if (reg == PDDDR) {
 		return portDirections & 0xFF;
-	} else {
-      // printf("RegRead8 unknown:: pc=%08x lr=%08x reg=%03x\n", getGPR(15)-4, getGPR(14), reg);
-		return 0xFF;
-	}
-}
-uint32_t Emulator::readReg32(uint32_t reg) {
-	if (reg == LCDCTL) {
+    } else if (reg == LCDCTL) {
         //printf("LCD control read lcdControl = %d pc=%08x lr=%08x !!!\n", lcdControl, getGPR(15), getGPR(14));fflush(stdout);
         return lcdControl;
-	} else if (reg == LCDST) {
+    } else if (reg == LCDST) {
         //printf("LCD state read pc=%08x lr=%08x !!!\n", getGPR(15), getGPR(14));
-		return 0xFFFFFFFF;
-	} else if (reg == PWRSR) {
+        return 0xFFFFFFFF;
+    } else if (reg == PWRSR) {
         // printf("!!! PWRSR read pc=%08x lr=%08x pwrsr=%08x!!!\n", getGPR(15), getGPR(14),pwrsr);
-		return pwrsr;
-	} else if (reg == INTSR) {
-		return pendingInterrupts & interruptMask;
-	} else if (reg == INTRSR) {
-		return pendingInterrupts;
-	} else if (reg == INTENS) {
-		return interruptMask;
-	} else if ((reg & 0xF00) == 0x600) {
+        return pwrsr;
+    } else if (reg == INTSR) {
+        return pendingInterrupts & interruptMask;
+    } else if (reg == INTRSR) {
+        return pendingInterrupts;
+    } else if (reg == INTENS) {
+        return interruptMask;
+    } else if ((reg & 0xF00) == 0x600) {
         pendingInterrupts &= ~(1 << UART1);
         return uart1.readReg32(reg & 0xFFF);
-	} else if ((reg & 0xF00) == 0x700) {
+    } else if ((reg & 0xF00) == 0x700) {
         pendingInterrupts &= ~(1 << UART2);
         return uart2.readReg32(reg & 0xFFF);
-	} else if (reg == TC1VAL) {
-		return tc1.value;
-	} else if (reg == TC2VAL) {
-		return tc2.value;
-	} else if (reg == SSDR) {
-		// as per 5000A7B0 in 5mx rom
-		uint16_t ssiValue = 0;
-		switch (lastSSIRequest) {
-		case 0xD0D3: ssiValue = (uint16_t)(50 + (touchX * 5.7)); break;
-		case 0x9093: ssiValue = (uint16_t)(3834 - (touchY * 13.225)); break;
-		case 0xA4A4: ssiValue = 3100; break; // MainBattery
-		case 0xE4E4: ssiValue = 3100; break; // BackupBattery
-		}
-		uint32_t ret = 0;
-		if (ssiReadCounter == 4) ret = (ssiValue >> 5) & 0x7F;
-		if (ssiReadCounter == 5) ret = (ssiValue << 3) & 0xF8;
-		ssiReadCounter++;
-		if (ssiReadCounter == 6) ssiReadCounter = 0;
+    } else if (reg == TC1VAL) {
+        return tc1.value;
+    } else if (reg == TC2VAL) {
+        return tc2.value;
+    } else if (reg == SSDR) {
+        // as per 5000A7B0 in 5mx rom
+        uint16_t ssiValue = 0;
+        switch (lastSSIRequest) {
+        case 0xD0D3: ssiValue = (uint16_t)(50 + (touchX * 5.7)); break;
+        case 0x9093: ssiValue = (uint16_t)(3834 - (touchY * 13.225)); break;
+        case 0xA4A4: ssiValue = 3100; break; // MainBattery
+        case 0xE4E4: ssiValue = 3100; break; // BackupBattery
+        }
+        uint32_t ret = 0;
+        if (ssiReadCounter == 4) ret = (ssiValue >> 5) & 0x7F;
+        if (ssiReadCounter == 5) ret = (ssiValue << 3) & 0xF8;
+        ssiReadCounter++;
+        if (ssiReadCounter == 6) ssiReadCounter = 0;
 
-		// by hardware we should be clearing SSEOTI here, i think
-		// but we just leave it on to simplify things
-		return ret;
-	} else if (reg == SSSR) {
-		return 0;
+        // by hardware we should be clearing SSEOTI here, i think
+        // but we just leave it on to simplify things
+        return ret;
+    } else if (reg == SSSR) {
+        return 0;
     } else if (reg == RTCDRL) {
         uint16_t v = rtc & 0xFFFF;
 //		log("RTCDRL: %04x", v);
@@ -124,22 +131,33 @@ uint32_t Emulator::readReg32(uint32_t reg) {
         return v;
     } else if (reg == KSCAN) {
         return kScan;
+    } else if (reg == CODR) {
+        printf("read CODR :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,codr);
+        codecLastValueRead=true;
+        coflg |=1; // Receive fifo is empty
+        return codr;
     } else if (reg == CONFG) {
-        printf("read CONFG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,confg);
-        return confg;
+       printf("read CONFG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,confg);
+    return confg;
     } else if (reg == COFLG) {
-        printf("read COFLG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,coflg);
+       printf("read COFLG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,coflg);
         return coflg;
     } else if (reg == BZCONT) {
-        printf("read BZCONT :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,bzcont);
+       // printf("read BZCONT :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,bzcont);
     return bzcont;
-}else {
-       //  printf("RegRead32 unknown:: pc=%08x lr=%08x reg=%03x\n", getGPR(15)-4, getGPR(14), reg);
-		return 0xFFFFFFFF;
+    } else {
+     //  printf("RegRead unknown:: pc=%08x lr=%08x reg=%03x\n", getGPR(15)-4, getGPR(14), reg);fflush(stdout);
+        return 0xFFFFFFFF;
 	}
 }
 
-void Emulator::writeReg8(uint32_t reg, uint8_t value) {
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::writeReg8
+/// \param reg
+/// \param value
+////////////////////////////////////////////////////////////////////////////
+void Emulator::writeReg8(uint32_t reg, uint32_t value) {
+
 	if ((reg & 0xF00) == 0x600) {
        pendingInterrupts &= ~(1 << UART1);
         uart1.writeReg8(reg & 0xFFF, value);
@@ -190,8 +208,6 @@ void Emulator::writeReg8(uint32_t reg, uint8_t value) {
 		portDirections |= (uint32_t)value;
     } else if (reg == KSCAN) {
         kScan = value;
-    } else if (reg == CONFG) {
-        confg = value;
     } else if (reg == BZCONT) {
         // printf("write reg8 BZCONT :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,bzcont);fflush(stdout);
         bzcont = value;
@@ -203,71 +219,101 @@ void Emulator::writeReg8(uint32_t reg, uint8_t value) {
             if (buzzerOn) BuzzerStart();
             buzzerOn=false;
             buzzerVolume=0;
-        }}else {
-       // printf("RegWrite8 unknown:: pc=%08x reg=%03x value=%02x\n", getGPR(15)-4, reg, value);
-	}
-}
-void Emulator::writeReg32(uint32_t reg, uint32_t value) {
-	if (reg == LCDCTL) {
+        }
+    } else	if (reg == LCDCTL) {
         //printf("LCD: ctl write %08x\n", value);fflush(stdout);
-		lcdControl = value;              
-	} else if (reg == LCD_DBAR1) {
+        lcdControl = value;
+    } else if (reg == LCD_DBAR1) {
     //	printf("LCD: address write %08x\n", value);
         lcdAddress = value;
-	} else if (reg == LCDT0) {
+    } else if (reg == LCDT0) {
         //printf("LCD: horz timing write %08x\n", value);
-	} else if (reg == LCDT1) {
+    } else if (reg == LCDT1) {
         //printf("LCD: vert timing write %08x\n", value);
-	} else if (reg == LCDT2) {
+    } else if (reg == LCDT2) {
         //printf("LCD: clocks write %08x\n", value);
-	} else if (reg == INTENS) {
+    } else if (reg == INTENS) {
 //		diffInterrupts(interruptMask, interruptMask | value);
-		interruptMask |= value;
-	} else if (reg == INTENC) {
+        interruptMask |= value;
+    } else if (reg == INTENC) {
 //		diffInterrupts(interruptMask, interruptMask &~ value);
-		interruptMask &= ~value;
-	} else if (reg == HALT) {
-		halted = true;
-	// BLEOI = 0x410,
-	// MCEOI = 0x414,
-	} else if (reg == TEOI) {
-		pendingInterrupts &= ~(1 << TINT);
-	// TEOI = 0x418,
-	// STFCLR = 0x41C,
-	// E2EOI = 0x420,
-	} else if ((reg & 0xF00) == 0x600) {
+        interruptMask &= ~value;
+    } else if (reg == HALT) {
+        halted = true;
+    // BLEOI = 0x410,
+    // MCEOI = 0x414,
+    } else if (reg == TEOI) {
+        pendingInterrupts &= ~(1 << TINT);
+    // TEOI = 0x418,
+    // STFCLR = 0x41C,
+    // E2EOI = 0x420,
+    } else if ((reg & 0xF00) == 0x600) {
         pendingInterrupts &= ~(1 << UART1);
         uart1.writeReg32(reg & 0xFFF, value);
-	} else if ((reg & 0xF00) == 0x700) {
+    } else if ((reg & 0xF00) == 0x700) {
         pendingInterrupts &= ~(1 << UART2);
         uart2.writeReg32(reg & 0xFFF, value);
-	} else if (reg == SSDR) {
-		if (value != 0)
-			lastSSIRequest = (lastSSIRequest >> 8) | (value & 0xFF00);
-	} else if (reg == TC1LOAD) {
-		tc1.load(value);
-	} else if (reg == TC1EOI) {
-		pendingInterrupts &= ~(1 << TC1OI);
-	} else if (reg == TC2LOAD) {
-		tc2.load(value);
-	} else if (reg == TC2EOI) {
-		pendingInterrupts &= ~(1 << TC2OI);
-	} else if (reg == RTCDRL) {
-		rtc &= 0xFFFF0000;
-		rtc |= (value & 0xFFFF);
+    } else if (reg == SSDR) {
+        if (value != 0)
+            lastSSIRequest = (lastSSIRequest >> 8) | (value & 0xFF00);
+    } else if (reg == TC1LOAD) {
+        tc1.load(value);
+    } else if (reg == TC1EOI) {
+        pendingInterrupts &= ~(1 << TC1OI);
+    } else if (reg == TC2LOAD) {
+        tc2.load(value);
+    } else if (reg == TC2EOI) {
+        pendingInterrupts &= ~(1 << TC2OI);
+    } else if (reg == RTCDRL) {
+        rtc &= 0xFFFF0000;
+        rtc |= (value & 0xFFFF);
         //log("RTC write lower: %04x", value);
-	} else if (reg == RTCDRU) {
-		rtc &= 0x0000FFFF;
-		rtc |= (value & 0xFFFF) << 16;
+    } else if (reg == RTCDRU) {
+        rtc &= 0x0000FFFF;
+        rtc |= (value & 0xFFFF) << 16;
         //log("RTC write upper: %04x", value);
     } else if (reg==CODR){
-        printf("CODR write : %08x", value);fflush(stdout);
+        codr=value;
+        codecValueOutReady=true;
+        codrCounter++;
+        if(codrCounter>=8 && (confg & 3) == 3 ) {
+            pendingInterrupts |= (1 << CSINT);
+            codrCounter=0;
+            coflg|=2; // transmit fifo full
+        }
+
+        printf("CODR write : %08x\n", value);fflush(stdout);
     } else if (reg==CONFG){
-        printf("CONFG write : %08x", value);fflush(stdout);
+        printf("CONFG write : %08x\n", value);fflush(stdout);
         confg=value;
+        if ((confg & 3) == 3) pendingInterrupts |= (1 << CSINT); // Set CODEC irq
+    } else if (reg==COEOI){
+        printf("COEOI write : %08x\n", value);fflush(stdout);
+        pendingInterrupts &= ~(1 << CSINT);                  // Unset CODEC irq
     }else {
-       // printf("RegWrite32 unknown:: pc=%08x reg=%03x value=%08x\n", getGPR(15)-4, reg, value);
+       //  printf("RegWrite unknown:: pc=%08x reg=%03x value=%02x\n", getGPR(15)-4, reg, value);fflush(stdout);
 	}
+}
+
+
+////////////////////////////////////////////////////////////////////////////
+/// \brief readReg32
+/// \param reg
+/// \return
+////////////////////////////////////////////////////////////////////////////
+uint32_t Emulator::readReg32(uint32_t reg) {
+   // printf("Mode 32 bits : ");fflush(stdout);
+    return readReg8(reg);
+}
+
+////////////////////////////////////////////////////////////////////////////
+/// \brief writeReg32
+/// \param reg
+/// \param value
+////////////////////////////////////////////////////////////////////////////
+void Emulator::writeReg32(uint32_t reg, uint32_t value) {
+   // printf("Mode 32 bits : ");fflush(stdout);
+    writeReg8(reg,value);
 }
 
 MaybeU32 Emulator::readPhysical(uint32_t physAddr, ValueSize valueSize) {
@@ -339,7 +385,13 @@ MaybeU32 Emulator::readPhysical(uint32_t physAddr, ValueSize valueSize) {
 
 	return {};
 }
-
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::writePhysical
+/// \param value
+/// \param physAddr
+/// \param valueSize
+/// \return
+////////////////////////////////////////////////////////////////////////////
 bool Emulator::writePhysical(uint32_t value, uint32_t physAddr, ValueSize valueSize) {
 	uint8_t region = (physAddr >> 24) & 0xF1;
 
@@ -414,7 +466,9 @@ bool Emulator::writePhysical(uint32_t value, uint32_t physAddr, ValueSize valueS
 	return true;
 }
 
-
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::configure
+////////////////////////////////////////////////////////////////////////////
 void Emulator::configure() {
 
     if (configured) return;
@@ -490,12 +544,20 @@ uint32_t Emulator::getRAMsizeD1() {
     return sizeof(MemoryBlockD1);
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::executeUntil
+/// \param cycles
+////////////////////////////////////////////////////////////////////////////
 void Emulator::executeUntil(int64_t cycles) {
 
     //QElapsedTimer timer;
     //timer.start();
 	if (!configured)
 		configure();
+
+    // CODEC
+    if (codecValueInReady && codecLastValueRead) { CodecReadData(); }
+    if (codecValueOutReady) {CodecWriteData(); }
 
 	while (!asleep && passedCycles < cycles) {
 
@@ -584,7 +646,11 @@ void Emulator::executeUntil(int64_t cycles) {
 
 }
 
-
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::identifyObjectCon
+/// \param ptr
+/// \return
+////////////////////////////////////////////////////////////////////////////
 const char *Emulator::identifyObjectCon(uint32_t ptr) {
 	if (ptr == readVirtualDebug(0x80000980, V32).value()) return "process";
 	if (ptr == readVirtualDebug(0x80000984, V32).value()) return "thread";
@@ -602,6 +668,11 @@ const char *Emulator::identifyObjectCon(uint32_t ptr) {
 	return NULL;
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::fetchStr
+/// \param str
+/// \param buf
+////////////////////////////////////////////////////////////////////////////
 void Emulator::fetchStr(uint32_t str, char *buf) {
 	if (str == 0) {
 		strcpy(buf, "<NULL>");
@@ -614,14 +685,28 @@ void Emulator::fetchStr(uint32_t str, char *buf) {
 	buf[size] = 0;
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::fetchName
+/// \param obj
+/// \param buf
+////////////////////////////////////////////////////////////////////////////
 void Emulator::fetchName(uint32_t obj, char *buf) {
 	fetchStr(readVirtualDebug(obj + 0x10, V32).value(), buf);
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::fetchProcessFilename
+/// \param obj
+/// \param buf
+////////////////////////////////////////////////////////////////////////////
 void Emulator::fetchProcessFilename(uint32_t obj, char *buf) {
 	fetchStr(readVirtualDebug(obj + 0x3C, V32).value(), buf);
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::debugPC
+/// \param pc
+////////////////////////////////////////////////////////////////////////////
 void Emulator::debugPC(uint32_t pc) {
 	char objName[1000];
 
@@ -691,7 +776,10 @@ void Emulator::debugPC(uint32_t pc) {
 	}
 }
 
-
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::getDeviceName
+/// \return
+////////////////////////////////////////////////////////////////////////////
 const char *Emulator::getDeviceName() const { return "Series 5mx"; }
 int Emulator::getDigitiserWidth()  const { return 695; }
 int Emulator::getDigitiserHeight() const { return 280; }
@@ -704,6 +792,11 @@ int Emulator::getLCDHeight()       const { return 240; }
 static bool initRgbValues = false;
 static uint32_t rgbValues[16];
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::readLCDIntoBuffer
+/// \param lines
+/// \param is32BitOutput
+////////////////////////////////////////////////////////////////////////////
 void Emulator::readLCDIntoBuffer(uint8_t **lines, bool is32BitOutput) const {
 	if (!initRgbValues) {
 		initRgbValues = true;
@@ -749,9 +842,19 @@ void Emulator::readLCDIntoBuffer(uint8_t **lines, bool is32BitOutput) const {
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::readLCDColorIntoBuffer
+/// \param lines
+/// \param is32BitOutput
+////////////////////////////////////////////////////////////////////////////
 void Emulator::readLCDColorIntoBuffer(uint8_t **lines, bool is32BitOutput) const {
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::diffPorts
+/// \param oldval
+/// \param newval
+////////////////////////////////////////////////////////////////////////////
 void Emulator::diffPorts(uint32_t oldval, uint32_t newval) {
 	uint32_t changes = oldval ^ newval;
     //if (changes & 1) printf("PRT codec enable: %d\n", newval&1);
@@ -780,6 +883,11 @@ void Emulator::diffPorts(uint32_t oldval, uint32_t newval) {
     //if (changes & 0x800000) printf("PRT etna cf power: %d\n", newval&0x800000);
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::diffInterrupts
+/// \param oldval
+/// \param newval
+////////////////////////////////////////////////////////////////////////////
 void Emulator::diffInterrupts(uint16_t oldval, uint16_t newval) {
 	uint16_t changes = oldval ^ newval;
   //  if (changes & 1) printf("INTCHG external=%d\n", newval & 1);
@@ -800,7 +908,10 @@ void Emulator::diffInterrupts(uint16_t oldval, uint16_t newval) {
    // if (changes & 0x8000) printf("INTCHG spi=%d\n", newval & 0x8000);
 }
 
-
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::readKeyboard
+/// \return
+////////////////////////////////////////////////////////////////////////////
 uint32_t Emulator::readKeyboard() {
 	if (kScan & 8) {
 		// Select one keyboard
@@ -816,6 +927,11 @@ uint32_t Emulator::readKeyboard() {
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::setKeyboardKey
+/// \param key
+/// \param value
+////////////////////////////////////////////////////////////////////////////
 void Emulator::setKeyboardKey(EpocKey key, bool value) {
 	int idx = -1;
 #define KEY(column, bit) idx = (column << 8) | (1 << bit); break
@@ -894,6 +1010,12 @@ void Emulator::setKeyboardKey(EpocKey key, bool value) {
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::updateTouchInput
+/// \param x
+/// \param y
+/// \param down
+////////////////////////////////////////////////////////////////////////////
 void Emulator::updateTouchInput(int32_t x, int32_t y, bool down) {
 	pendingInterrupts &= ~(1 << EINT3);
 	if (down)
@@ -902,20 +1024,62 @@ void Emulator::updateTouchInput(int32_t x, int32_t y, bool down) {
 	touchY = y;
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::UartReadData
+////////////////////////////////////////////////////////////////////////////
 void Emulator::UartReadData() {
 
-    if (!m_queue.isEmpty()) {
-        uart2.UART2DATA_valueIn=m_queue.dequeue();
+    if (!m_uartQueue.isEmpty()) {
+        uart2.UART2DATA_valueIn=m_uartQueue.dequeue();
         uart2.UART2DATA_lastValueRead=false;
         //printf("r(0x%x) ",uart2.UART2DATA_valueIn);fflush(stdout);
         uart2.UART2FLG_value &= ~uart2.AMBA_UARTFR_RXFE;    // Input fifo is no more empty
         uart2.UART2INTR_value|=uart2.PSIONW_UART_RXINT ;    //  set IrqUart2 to ask application to pick this data up
         pendingInterrupts |= (1 << UART2);                  // Set irq
     }
-    uart2.UART2DATA_valueInReady=!m_queue.isEmpty();
-
+    uart2.UART2DATA_valueInReady=!m_uartQueue.isEmpty();
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief EMulator::CodecWriteData (to produce sound)
+////////////////////////////////////////////////////////////////////////////
+void Emulator::CodecWriteData() {
+
+    printf("CodecWriteData()\n");fflush(stdout);
+
+    char data;
+    if (codecValueOutReady) {
+        data=codr;
+        printf("w(0x%x) ",data);fflush(stdout);
+
+        // Write here to output codec TODO
+
+        codecValueOutReady=false;
+        coflg &= ~2; // Transmit fifo is empty
+        pendingInterrupts |= (1 << CSINT);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////
+/// \brief EMulator::CodecReadData (to record sound)
+////////////////////////////////////////////////////////////////////////////
+void Emulator::CodecReadData() {
+
+    printf("CodecReadData()\n");fflush(stdout);
+//    if (!m_codecQueue.isEmpty()) {
+//        codr=m_uartQueue.dequeue();
+      if (true) { //SIMULATE INCOMING DATA FOR TESTING
+          codr=(codr +1) & 0xFF; // TEST
+        codecLastValueRead=false;
+        coflg &= ~1;    // Receive fifo is no more empty
+    }
+    //codecValueInReady=!m_codecQueue.isEmpty();
+      codecValueInReady=true; // ALWAYS INCOMING DATA FOR TESTING
+}
+
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::UartWriteData
+////////////////////////////////////////////////////////////////////////////
 void Emulator::UartWriteData() {
 
     char data;
@@ -924,11 +1088,13 @@ void Emulator::UartWriteData() {
         //printf("w(0x%x) ",data);fflush(stdout);
         m_serial.write(&data,1);
         uart2.UART2DATA_valueOutReady=false;
-        uart2.UART2FLG_value &= ~uart2.AMBA_UARTFR_TXFF;
-
+        uart2.UART2FLG_value &= ~uart2.AMBA_UARTFR_TXFF; // transmit fifo is empty
     }
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::OpenSerialinterface
+////////////////////////////////////////////////////////////////////////////
 void Emulator::OpenSerialinterface() {
     qDebug()  << "Serial analysis starts";
    foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts()) {
@@ -956,9 +1122,9 @@ void Emulator::OpenSerialinterface() {
            //this is called when readyRead() is emitted
            char data;
            while(m_serial.read(&data,1)==1){
-               m_queue.enqueue(data);
+               m_uartQueue.enqueue(data);
            }
-           uart2.UART2DATA_valueInReady=!m_queue.isEmpty();
+           uart2.UART2DATA_valueInReady=!m_uartQueue.isEmpty();
        });
    }
    qDebug()  << "Serial analysis stops";

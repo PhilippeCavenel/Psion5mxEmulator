@@ -447,7 +447,7 @@ struct UART { // source serial_psionw.h
     /// \param reg
     /// \param value
     ////////////////////////////////////////////////////////////////////////////
-    void writeReg32(uint32_t reg, uint8_t value) {
+    void writeReg32(uint32_t reg, uint32_t value) {
        // printf("Mode 32 bits : ");fflush(stdout);
         writeReg8(reg,value);
     }

@@ -168,6 +168,8 @@ public:
     virtual void updateTouchInput(int32_t x, int32_t y, bool down) = 0;
     virtual void UartReadData() = 0;
     virtual void UartWriteData() = 0;
+    virtual void CodecReadData() = 0;
+    virtual void CodecWriteData() = 0;
     virtual void OpenSerialinterface() = 0;
 
 //#ifndef __EMSCRIPTEN__
