@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE QtCreatorProject>
-<!-- Written by QtCreator 5.0.2, 2021-11-12T12:03:53. -->
+<!-- Written by QtCreator 5.0.2, 2021-11-14T18:11:51. -->
 <qtcreator>
  <data>
   <variable>EnvironmentId</variable>
@@ -410,7 +410,6 @@
     <value type="bool" key="RunConfiguration.UseLibrarySearchPath">true</value>
     <value type="bool" key="RunConfiguration.UseQmlDebugger">false</value>
     <value type="bool" key="RunConfiguration.UseQmlDebuggerAuto">true</value>
-    <value type="QString" key="RunConfiguration.WorkingDirectory.default">D:/PSION/build-Psion5mxEmulator-Desktop_Qt_6_2_0_MinGW_64_bit-Release/Psion5mxEmulatorQt</value>
    </valuemap>
    <value type="int" key="ProjectExplorer.Target.RunConfigurationCount">1</value>
   </valuemap>

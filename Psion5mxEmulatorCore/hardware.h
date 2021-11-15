@@ -11,6 +11,7 @@
 #pragma once
 #include "arm710.h"
 #include <stdio.h>
+#include <QQueue>
 
 struct Timer {
 	ARM710 *cpu;
@@ -167,6 +168,8 @@ struct UART { // source serial_psionw.h
     uint32_t UART2TEST1_value=0;              // Test register
     uint32_t UART2TEST2_value=0;              // Test register
     uint32_t UART2TEST3_value=0;              // Test register
+    QQueue<char> m_uart2WriteQueue;
+
 
     ////////////////////////////////////////////////////////////////////////////
     /// \brief readReg8
@@ -366,6 +369,7 @@ struct UART { // source serial_psionw.h
             break;
         case UART2DATA: // Received output data from application to send
             UART2DATA_valueOut=value;
+            m_uart2WriteQueue.enqueue(value);
             UART2DATA_valueOutReady=true;
             UART2FLG_value|=AMBA_UARTFR_TXFF;
             // printf("Write UART2DATA = 0x%x (%c)\n",UART2DATA_valueOut,UART2DATA_valueOut);fflush(stdout);

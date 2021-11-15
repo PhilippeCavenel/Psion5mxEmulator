@@ -23,12 +23,21 @@ MainWindow::MainWindow(EmuBase *emu, QWidget *parent) :
 	});
 
     // Timer for main CPU loop
-    timer_1 = new QTimer(this);
-    timer_1->setInterval(1000/64);
-    connect(timer_1, SIGNAL(timeout()), SLOT(execTimer()));
+    timerMainLoop = new QTimer(this);
+    timerMainLoop->setInterval(1000/64);
+    connect(timerMainLoop, SIGNAL(timeout()), SLOT(execTimerMainLoop()));
 
     pdaScreen.show();
-    timer_1->start(); // To run main emulator loop
+    timerMainLoop->start(); // To run main emulator loop
+
+    // Timer for audio codec
+    timerCodec = new QTimer(this);
+    timerCodec->setInterval(10); //10ms
+    connect(timerCodec, SIGNAL(timeout()), SLOT(execTimerCodec()));
+
+    pdaScreen.show();
+    timerMainLoop->start(); // To run main emulator loop
+    timerCodec->start(); // To run main emulator loop
 
     // Simulate serial link
     emu->OpenSerialinterface();
@@ -41,7 +50,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::execTimer()
+void MainWindow::execTimerMainLoop()
 {
 
     if (emu)  {
@@ -50,6 +59,13 @@ void MainWindow::execTimer()
             pdaScreen.updateScreen();
             emu->m_screenRefresh=false;
         }
+    }
+}
+void MainWindow::execTimerCodec()
+{
+
+    if (emu)  {
+        emu->playSound();
     }
 }
 

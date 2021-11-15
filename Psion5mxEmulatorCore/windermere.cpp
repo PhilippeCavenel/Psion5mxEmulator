@@ -15,6 +15,9 @@
 #include "common.h"
 #include <QFileDialog>
 #include <QApplication>
+#include <QtMultimedia>
+#include <QBuffer>
+
 
 #define INCLUDE_D
 // #define INCLUDE_BANK1 // Doesn't work.... to be fixed
@@ -273,11 +276,12 @@ void Emulator::writeReg8(uint32_t reg, uint32_t value) {
         rtc |= (value & 0xFFFF) << 16;
         //log("RTC write upper: %04x", value);
     } else if (reg==CODR){
+        m_codecQueue.enqueue((unsigned char) (value & 0xFF));
         codr=value;
-        codecValueOutReady=true;
+        //printf("%02x ", value);fflush(stdout);
         codrCounter++;
         if(codrCounter>=8 && (confg & 3) == 3 ) {
-            pendingInterrupts |= (1 << CSINT);
+            codecValueOutReady=true;
             codrCounter=0;
             coflg|=2; // transmit fifo full
         }
@@ -488,12 +492,25 @@ void Emulator::configure() {
     rtc = getRTC();
     reset();
 
+
+    // BUZZER
 #ifdef Q_OS_WIN64
         effect.setSource(QUrl::fromLocalFile(qApp->applicationDirPath().append(QString("/../../../Psion5mxEmulator/Psion5mxEmulatorQt/pkg_src/assets/beep.wav"))));
 
 #else // Android
         effect.setSource(QString("assets:beep.wav"));
 #endif
+
+        // CODEC
+        QAudioFormat audioFormat;
+        audioFormat.setSampleRate(8000); // 8KHz
+        audioFormat.setChannelCount(1);
+        audioFormat.setChannelConfig(QAudioFormat::ChannelConfigMono); // audio/pcm
+        audioFormat.setSampleFormat(QAudioFormat::Int16);
+        m_audioOutput = new QAudioSink(audioFormat);
+       // m_audioOutput->setBufferSize(16);
+        m_audioOutput->setVolume(1);
+        m_ioDevice = m_audioOutput->start();
 }
 
 uint8_t *Emulator::getROMBuffer() {
@@ -562,7 +579,7 @@ void Emulator::executeUntil(int64_t cycles) {
         if (uart2.UART2DATA_valueInReady && uart2.UART2DATA_lastValueRead) UartReadData();
         if (uart2.UART2DATA_valueOutReady) UartWriteData();
 
-        if (passedCycles >= nextCodecAt) { // every 1/1000 secondes
+       if (passedCycles >= nextCodecAt) { // every 1/1000 secondes
             if (codecValueInReady && codecLastValueRead) { CodecReadData(); }
             if (codecValueOutReady) {CodecWriteData(); }
             nextCodecAt+= CODEC_INTERVAL;
@@ -1033,15 +1050,15 @@ void Emulator::updateTouchInput(int32_t x, int32_t y, bool down) {
 ////////////////////////////////////////////////////////////////////////////
 void Emulator::UartReadData() {
 
-    if (!m_uartQueue.isEmpty()) {
-        uart2.UART2DATA_valueIn=m_uartQueue.dequeue();
+    if (!m_uartReadQueue.isEmpty()) {
+        uart2.UART2DATA_valueIn=m_uartReadQueue.dequeue();
         uart2.UART2DATA_lastValueRead=false;
         //printf("r(0x%x) ",uart2.UART2DATA_valueIn);fflush(stdout);
         uart2.UART2FLG_value &= ~uart2.AMBA_UARTFR_RXFE;    // Input fifo is no more empty
         uart2.UART2INTR_value|=uart2.PSIONW_UART_RXINT ;    //  set IrqUart2 to ask application to pick this data up
         pendingInterrupts |= (1 << UART2);                  // Set irq
     }
-    uart2.UART2DATA_valueInReady=!m_uartQueue.isEmpty();
+    uart2.UART2DATA_valueInReady=!m_uartReadQueue.isEmpty();
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -1050,17 +1067,31 @@ void Emulator::UartReadData() {
 void Emulator::CodecWriteData() {
 
    // printf("CodecWriteData()\n");fflush(stdout);
-
-    char data;
     if (codecValueOutReady) {
-        data=codr;
-      //  printf("w(0x%x) ",data);fflush(stdout);
-
-        // Write here to output codec TODO
-
+        //m_codecQueue.enqueue((unsigned char) (codr & 0xFF));
         codecValueOutReady=false;
         coflg &= ~2; // Transmit fifo is empty
         pendingInterrupts |= (1 << CSINT);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////
+/// \brief playSound
+////////////////////////////////////////////////////////////////////////////
+void Emulator::playSound() {
+
+    if(!m_codecQueue.isEmpty() && m_codecQueue.length()>16) {
+        QByteArray byteArray;
+        byteArray.resize(2*m_codecQueue.length());
+        int byteArrayPtr=0;
+        short value;
+        while(!m_codecQueue.isEmpty()) {                    
+            value=alaw2pcm[m_codecQueue.dequeue()];
+            byteArray[byteArrayPtr++]=(value) & 0xFF;
+            byteArray[byteArrayPtr++]=(value>>8) & 0xFF;
+            //byteArray[byteArrayPtr++]=m_codecQueue.dequeue();
+        }
+        m_ioDevice->write(byteArray,byteArray.length());
     }
 }
 
@@ -1088,9 +1119,12 @@ void Emulator::UartWriteData() {
 
     char data;
     if (uart2.UART2DATA_valueOutReady) {
-        data=uart2.UART2DATA_valueOut;
-        //printf("w(0x%x) ",data);fflush(stdout);
-        m_serial.write(&data,1);
+        while(!uart2.m_uart2WriteQueue.isEmpty()){
+           // data=uart2.UART2DATA_valueOut;
+            data=uart2.m_uart2WriteQueue.dequeue();
+            //printf("w(0x%x) ",data);fflush(stdout);
+         m_serial.write(&data,1);
+        }
         uart2.UART2DATA_valueOutReady=false;
         uart2.UART2FLG_value &= ~uart2.AMBA_UARTFR_TXFF; // transmit fifo is empty
     }
@@ -1126,9 +1160,9 @@ void Emulator::OpenSerialinterface() {
            //this is called when readyRead() is emitted
            char data;
            while(m_serial.read(&data,1)==1){
-               m_uartQueue.enqueue(data);
+               m_uartReadQueue.enqueue(data);
            }
-           uart2.UART2DATA_valueInReady=!m_uartQueue.isEmpty();
+           uart2.UART2DATA_valueInReady=!m_uartReadQueue.isEmpty();
        });
    }
    qDebug()  << "Serial analysis stops";

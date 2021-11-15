@@ -171,6 +171,7 @@ public:
     virtual void UartWriteData() = 0;
     virtual void CodecReadData() = 0;
     virtual void CodecWriteData() = 0;
+    virtual void playSound() = 0;
     virtual void OpenSerialinterface() = 0;
 
 //#ifndef __EMSCRIPTEN__
