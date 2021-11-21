@@ -556,7 +556,7 @@ void Emulator::configure() {
     //m_audioInput = new QAudioSource(DefautDeviceIn.preferredFormat());
     m_audioInput = new QAudioSource(audioFormat);
     m_audioInput->setVolume(1);
-    m_audioInput->setBufferSize(100000);
+    m_audioInput->setBufferSize(1000);
     qWarning() << m_audioInput->bufferSize();
     qWarning() << m_audioInput->state();
     m_inputDevice=m_audioInput->start();
