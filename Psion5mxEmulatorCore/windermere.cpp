@@ -41,7 +41,7 @@ uint32_t Emulator::getRTC() {
 /// \brief Emulator::BuzzerStart
 ////////////////////////////////////////////////////////////////////////////
 void Emulator::BuzzerStart(){
-    printf("buzzerVolume(%l)\n",buzzerVolume);fflush(stdout);
+    // printf("buzzerVolume(%l)\n",buzzerVolume);fflush(stdout);
     effect.setLoopCount(1);
     effect.setVolume(buzzerVolume/10);
     effect.play();
@@ -135,18 +135,37 @@ uint32_t Emulator::readReg8(uint32_t reg) {
     } else if (reg == KSCAN) {
         return kScan;
     } else if (reg == CODR) {
+        if (!m_recordStart) {
+            m_recordStart=true;
+            m_audioInput->stop();
+            m_audioInput->reset();
+            m_inputCodecQueue.clear();
+            m_inputDevice=m_audioInput->start();
+            printf("start audioInput %d bytesAvailable\n",m_audioInput->bytesAvailable());fflush(stdout);
+
+        }
+
+       // printf("m_inputCodecQueue length = %d\n",m_inputCodecQueue.length());fflush(stdout);
+        codrInputCounter++;
+        if(codrInputCounter>=8) {
+            codrInputCounter=0;
+            codecValueInRead=false;
+            coflg|=1; // Receive fifo is empty
+        }
+
+        if (m_audioInput->bytesAvailable()>0) recordSound();
+        if (!m_inputCodecQueue.empty()) { codr=m_inputCodecQueue.dequeue(); }
+
      //   printf("read CODR :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,codr);
-        codecLastValueRead=true;
-        coflg |=1; // Receive fifo is empty
         return codr;
     } else if (reg == CONFG) {
-     //  printf("read CONFG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,confg);
+      //  printf("read CONFG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,confg);
     return confg;
     } else if (reg == COFLG) {
-     //  printf("read COFLG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,coflg);
+      //  printf("read COFLG :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,coflg);
         return coflg;
     } else if (reg == BZCONT) {
-       // printf("read BZCONT :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,bzcont);
+      //  printf("read BZCONT :: pc=%08x lr=%08x reg=%03x value=%08x\n", getGPR(15)-4, getGPR(14), reg,bzcont);
     return bzcont;
     } else {
      //  printf("RegRead unknown:: pc=%08x lr=%08x reg=%03x\n", getGPR(15)-4, getGPR(14), reg);fflush(stdout);
@@ -276,24 +295,34 @@ void Emulator::writeReg8(uint32_t reg, uint32_t value) {
         rtc |= (value & 0xFFFF) << 16;
         //log("RTC write upper: %04x", value);
     } else if (reg==CODR){
-        m_codecQueue.enqueue((unsigned char) (value & 0xFF));
+        m_outputCodecQueue.enqueue((unsigned char) (value & 0xFF));
         codr=value;
         //printf("%02x ", value);fflush(stdout);
-        codrCounter++;
-        if(codrCounter>=8 && (confg & 3) == 3 ) {
+        codrOutputCounter++;
+        if(codrOutputCounter>=8) {
             codecValueOutReady=true;
-            codrCounter=0;
+            codrOutputCounter=0;
             coflg|=2; // transmit fifo full
         }
 
      //   printf("CODR write : %08x\n", value);fflush(stdout);
     } else if (reg==CONFG){
-      //  printf("CONFG write : %08x\n", value);fflush(stdout);
+     // printf("CONFG write : %08x\n", value);fflush(stdout);
         confg=value;
         if ((confg & 3) == 3) pendingInterrupts |= (1 << CSINT); // Set CODEC irq
+        else {
+            if (m_recordStart) {
+                m_recordStart=false;
+                m_audioInput->stop();
+                // printf("stop audioInput\n");fflush(stdout);
+            }
+            m_inputCodecQueue.clear();
+            m_outputCodecQueue.clear();
+        }
     } else if (reg==COEOI){
-      //  printf("COEOI write : %08x\n", value);fflush(stdout);
+      // printf("COEOI write : %08x\n", value);fflush(stdout);
         pendingInterrupts &= ~(1 << CSINT);                  // Unset CODEC irq
+
     }else {
        //  printf("RegWrite unknown:: pc=%08x reg=%03x value=%02x\n", getGPR(15)-4, reg, value);fflush(stdout);
 	}
@@ -320,6 +349,12 @@ void Emulator::writeReg32(uint32_t reg, uint32_t value) {
     writeReg8(reg,value);
 }
 
+////////////////////////////////////////////////////////////////////////////
+/// \brief Emulator::readPhysical
+/// \param physAddr
+/// \param valueSize
+/// \return
+////////////////////////////////////////////////////////////////////////////
 MaybeU32 Emulator::readPhysical(uint32_t physAddr, ValueSize valueSize) {
 	uint8_t region = (physAddr >> 24) & 0xF1;
 	if (valueSize == V8) {
@@ -495,22 +530,42 @@ void Emulator::configure() {
 
     // BUZZER
 #ifdef Q_OS_WIN64
-        effect.setSource(QUrl::fromLocalFile(qApp->applicationDirPath().append(QString("/../../../Psion5mxEmulator/Psion5mxEmulatorQt/pkg_src/assets/beep.wav"))));
+     effect.setSource(QUrl::fromLocalFile(qApp->applicationDirPath().append(QString("/../../../Psion5mxEmulator/Psion5mxEmulatorQt/pkg_src/assets/beep.wav"))));
 
 #else // Android
         effect.setSource(QString("assets:beep.wav"));
 #endif
+     // CODEC
 
-        // CODEC
-        QAudioFormat audioFormat;
-        audioFormat.setSampleRate(8000); // 8KHz
-        audioFormat.setChannelCount(1);
-        audioFormat.setChannelConfig(QAudioFormat::ChannelConfigMono); // audio/pcm
-        audioFormat.setSampleFormat(QAudioFormat::Int16);
-        m_audioOutput = new QAudioSink(audioFormat);
-       // m_audioOutput->setBufferSize(16);
-        m_audioOutput->setVolume(1);
-        m_ioDevice = m_audioOutput->start();
+    QAudioFormat audioFormat;
+    audioFormat.setSampleRate(8000); // 8KHz
+    audioFormat.setChannelCount(1);
+    audioFormat.setChannelConfig(QAudioFormat::ChannelConfigMono); // audio/pcm
+    audioFormat.setSampleFormat(QAudioFormat::Int16);
+
+    // CODEC INPUT
+    // printf("CODEC INPUT");fflush(stdout);
+
+    QAudioDevice DefautDeviceIn = QMediaDevices::defaultAudioInput();
+    qWarning() << DefautDeviceIn.description();
+    qWarning() << DefautDeviceIn.preferredFormat();
+    qWarning() << DefautDeviceIn.maximumSampleRate();
+    qWarning() << DefautDeviceIn.minimumSampleRate();
+    qWarning() << DefautDeviceIn.minimumChannelCount();
+    qWarning() << DefautDeviceIn.supportedSampleFormats();
+    //m_audioInput = new QAudioSource(DefautDeviceIn.preferredFormat());
+    m_audioInput = new QAudioSource(audioFormat);
+    m_audioInput->setVolume(1);
+    m_audioInput->setBufferSize(100000);
+    qWarning() << m_audioInput->bufferSize();
+    qWarning() << m_audioInput->state();
+    m_inputDevice=m_audioInput->start();
+
+    // CODEC OUTPUT
+    //m_audioOutput = new QAudioSink(DefautDeviceIn.preferredFormat());
+    m_audioOutput = new QAudioSink(audioFormat);
+    m_audioOutput->setVolume(1);
+    m_outputDevice=m_audioOutput->start();
 }
 
 uint8_t *Emulator::getROMBuffer() {
@@ -571,21 +626,21 @@ void Emulator::executeUntil(int64_t cycles) {
    // QElapsedTimer timer;
    // timer.start();
 	if (!configured)
-		configure();
+        configure();
 
-	while (!asleep && passedCycles < cycles) {
+    while (!asleep && passedCycles < cycles) {
 
         // UART2 external link
         if (uart2.UART2DATA_valueInReady && uart2.UART2DATA_lastValueRead) UartReadData();
         if (uart2.UART2DATA_valueOutReady) UartWriteData();
 
-       if (passedCycles >= nextCodecAt) { // every 1/1000 secondes
-            if (codecValueInReady && codecLastValueRead) { CodecReadData(); }
+       if (passedCycles >= nextCodecAt) { // every 1/1000 seconds
             if (codecValueOutReady) {CodecWriteData(); }
+            if (!codecValueInRead) { CodecReadData(); }
             nextCodecAt+= CODEC_INTERVAL;
         }
 
-        if (passedCycles >= nextTickAt) { // every 1/64 secondes
+        if (passedCycles >= nextTickAt) { // every 1/64 seconds
 			// increment RTCDIV
 			if ((pwrsr & 0x3F) == 0x3F) {
                 rtc++; // Real Time Clock, every 1 second
@@ -639,8 +694,8 @@ void Emulator::executeUntil(int64_t cycles) {
 			int64_t nextEvent = nextTickAt;
 			if (tc1.nextTickAt < nextEvent) nextEvent = tc1.nextTickAt;
 			if (tc2.nextTickAt < nextEvent) nextEvent = tc2.nextTickAt;
-			if (cycles < nextEvent) nextEvent = cycles;
-			passedCycles = nextEvent;
+            if (cycles < nextEvent) nextEvent = cycles;
+            passedCycles = nextEvent;
 
         }  /*else {
             if (auto v = virtToPhys(getGPR(15) - 0xC); v.has_value() && instructionReady()) {
@@ -1045,6 +1100,153 @@ void Emulator::updateTouchInput(int32_t x, int32_t y, bool down) {
 	touchY = y;
 }
 
+
+////////////////////////////////////////////////////////////////////////////
+/// \brief EMulator::CodecWriteData (to produce sound)
+////////////////////////////////////////////////////////////////////////////
+void Emulator::CodecWriteData() {
+
+    if (codecValueOutReady) {
+        // printf("CodecWriteData()\n");fflush(stdout);
+        codecValueOutReady=false;
+        coflg &= ~2; // Transmit fifo is empty
+        pendingInterrupts |= (1 << CSINT);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////
+/// \brief playSound
+////////////////////////////////////////////////////////////////////////////
+void Emulator::playSound() {
+
+    if(!m_outputCodecQueue.isEmpty() && (m_outputCodecQueue.length()>16) && ((confg & 3) == 3)) {
+
+        // printf("playSound()\n");fflush(stdout);
+        QByteArray byteArray;
+        byteArray.resize(2*m_outputCodecQueue.length());
+        int byteArrayPtr=0;
+        short value;
+
+        while(!m_outputCodecQueue.isEmpty()) {
+
+            value=alaw2pcm[m_outputCodecQueue.dequeue()];
+            byteArray[byteArrayPtr++]=(value) & 0xFF;
+
+            // TEST TO REMOVE NOT USED HERE
+            m_inputOuputTest.enqueue((value) & 0xFF);
+
+            byteArray[byteArrayPtr++]=(value>>8) & 0xFF;
+
+            // TEST TO REMOVE NOT USED HERE
+            m_inputOuputTest.enqueue((value>>8) & 0xFF);
+        }
+
+        m_outputDevice->write(byteArray,byteArray.length());
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////
+/* linear2alaw() - Convert a 16-bit linear PCM value to 8-bit A-law
+ *
+ * linear2alaw() accepts an 16-bit integer and encodes it as A-law data.
+ *
+ *		Linear Input Code	Compressed Code
+ *	------------------------	---------------
+ *	0000000wxyza			000wxyz
+ *	0000001wxyza			001wxyz
+ *	000001wxyzab			010wxyz
+ *	00001wxyzabc			011wxyz
+ *	0001wxyzabcd			100wxyz
+ *	001wxyzabcde			101wxyz
+ *	01wxyzabcdef			110wxyz
+ *	1wxyzabcdefg			111wxyz
+ *
+ * For further information see John C. Bellamy's Digital Telephony, 1982,
+ * John Wiley & Sons, pps 98-111 and 472-476.
+ */
+ ////////////////////////////////////////////////////////////////////////////
+
+unsigned char  Emulator::linear2alaw(short pcm_val)	/* 2's complement (16-bit range) */
+{
+   short	 mask;
+   short	 seg;
+   unsigned char aval;
+
+   pcm_val = pcm_val >> 3;
+
+   if (pcm_val >= 0) {
+      mask = 0xD5;		/* sign (7th) bit = 1 */
+   } else {
+      mask = 0x55;		/* sign bit = 0 */
+      pcm_val = -pcm_val - 1;
+   }
+
+   /* Convert the scaled magnitude to segment number. */
+   seg = search(pcm_val, seg_aend, 8);
+
+   /* Combine the sign, segment, and quantization bits. */
+
+   if (seg >= 8)		/* out of range, return maximum value. */
+      return (unsigned char) (0x7F ^ mask);
+   else {
+      aval = (unsigned char) seg << SEG_SHIFT;
+      if (seg < 2)
+     aval |= (pcm_val >> 1) & QUANT_MASK;
+      else
+     aval |= (pcm_val >> seg) & QUANT_MASK;
+      return (aval ^ mask);
+   }
+}
+
+////////////////////////////////////////////////////////////////////////////
+/// \brief EMulator::CodecReadData (to record sound) => Not yet tested !
+////////////////////////////////////////////////////////////////////////////
+void Emulator::CodecReadData() {
+
+    // printf("CodecReadData()\n");fflush(stdout);
+    coflg &= ~1;    // Receive fifo is no more empty
+    pendingInterrupts |= (1 << CSINT);
+    codecValueInRead=!m_inputCodecQueue.empty();
+
+}
+////////////////////////////////////////////////////////////////////////////
+/// \brief recordSound
+////////////////////////////////////////////////////////////////////////////
+void Emulator::recordSound() {
+
+    if(m_inputDevice!=nullptr) {
+       // printf("recordSound()\n");fflush(stdout);
+
+        QByteArray byteArray;
+        byteArray=m_inputDevice->readAll();
+        // printf("read %d data\n",(int)byteArray.length());fflush(stdout);
+        short value;
+        short value1;
+        short value2;
+
+        for (int i=0;i <byteArray.length()-1;i+=2){
+
+            value1 = byteArray[i] & 0xFF;
+            value2 = byteArray[i+1] & 0xFF;
+            value = value1 + (value2 << 8);
+            m_inputCodecQueue.enqueue(linear2alaw(value));
+        }
+
+        // TEST TO REMOVE (dequeue) AND TO COMMENT WHEN TESTING
+        short dummy;
+        if (!m_inputOuputTest.empty()) dummy=m_inputOuputTest.dequeue();
+
+       /* TEST
+        while(!m_inputOuputTest.empty()) {
+            if (!m_inputOuputTest.empty()) value1=m_inputOuputTest.dequeue();
+            if (!m_inputOuputTest.empty()) value2=m_inputOuputTest.dequeue();
+            value = value1 + (value2 << 8);
+            m_inputCodecQueue.enqueue(linear2alaw(value));
+        } */
+    }
+}
+
+
 ////////////////////////////////////////////////////////////////////////////
 /// \brief Emulator::UartReadData
 ////////////////////////////////////////////////////////////////////////////
@@ -1062,57 +1264,6 @@ void Emulator::UartReadData() {
 }
 
 ////////////////////////////////////////////////////////////////////////////
-/// \brief EMulator::CodecWriteData (to produce sound)
-////////////////////////////////////////////////////////////////////////////
-void Emulator::CodecWriteData() {
-
-   // printf("CodecWriteData()\n");fflush(stdout);
-    if (codecValueOutReady) {
-        //m_codecQueue.enqueue((unsigned char) (codr & 0xFF));
-        codecValueOutReady=false;
-        coflg &= ~2; // Transmit fifo is empty
-        pendingInterrupts |= (1 << CSINT);
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////
-/// \brief playSound
-////////////////////////////////////////////////////////////////////////////
-void Emulator::playSound() {
-
-    if(!m_codecQueue.isEmpty() && m_codecQueue.length()>16) {
-        QByteArray byteArray;
-        byteArray.resize(2*m_codecQueue.length());
-        int byteArrayPtr=0;
-        short value;
-        while(!m_codecQueue.isEmpty()) {                    
-            value=alaw2pcm[m_codecQueue.dequeue()];
-            byteArray[byteArrayPtr++]=(value) & 0xFF;
-            byteArray[byteArrayPtr++]=(value>>8) & 0xFF;
-            //byteArray[byteArrayPtr++]=m_codecQueue.dequeue();
-        }
-        m_ioDevice->write(byteArray,byteArray.length());
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////
-/// \brief EMulator::CodecReadData (to record sound)
-////////////////////////////////////////////////////////////////////////////
-void Emulator::CodecReadData() {
-
-    printf("CodecReadData()\n");fflush(stdout);
-//    if (!m_codecQueue.isEmpty()) {
-//        codr=m_uartQueue.dequeue();
-      if (true) { //SIMULATE INCOMING DATA FOR TESTING
-          codr=(codr +1) & 0xFF; // TEST
-        codecLastValueRead=false;
-        coflg &= ~1;    // Receive fifo is no more empty
-    }
-    //codecValueInReady=!m_codecQueue.isEmpty();
-      codecValueInReady=true; // ALWAYS INCOMING DATA FOR TESTING
-}
-
-////////////////////////////////////////////////////////////////////////////
 /// \brief Emulator::UartWriteData
 ////////////////////////////////////////////////////////////////////////////
 void Emulator::UartWriteData() {
@@ -1120,10 +1271,9 @@ void Emulator::UartWriteData() {
     char data;
     if (uart2.UART2DATA_valueOutReady) {
         while(!uart2.m_uart2WriteQueue.isEmpty()){
-           // data=uart2.UART2DATA_valueOut;
             data=uart2.m_uart2WriteQueue.dequeue();
             //printf("w(0x%x) ",data);fflush(stdout);
-         m_serial.write(&data,1);
+            m_serial.write(&data,1);
         }
         uart2.UART2DATA_valueOutReady=false;
         uart2.UART2FLG_value &= ~uart2.AMBA_UARTFR_TXFF; // transmit fifo is empty
@@ -1140,7 +1290,7 @@ void Emulator::OpenSerialinterface() {
        m_serial.setPort(info);
        if (info.description()=="com0com - serial port emulator") {
             if (m_serial.open(QIODevice::ReadWrite)) {
-                m_serial.setBaudRate(m_serial.Baud115200);
+                m_serial.setBaudRate(m_serial.Baud115200,QSerialPort::AllDirections);
                 m_serial.setDataBits(m_serial.Data8);
                 m_serial.setStopBits(m_serial.OneStop);
                 m_serial.setParity(m_serial.NoParity);

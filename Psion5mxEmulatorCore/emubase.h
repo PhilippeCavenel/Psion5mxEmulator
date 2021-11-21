@@ -18,6 +18,8 @@
 #include <QIODevice>
 #include <QAudioDevice>
 #include <QAudioSink>
+#include <QSoundEffect>
+#include <QAudioSource>
 #include <QMediaDevices>
 #include <QMainWindow>
 #include <QtSerialPort/QSerialPort>
@@ -155,7 +157,7 @@ public:
     virtual uint32_t getRAMsizeD1() = 0;
 
     virtual void executeUntil(int64_t cycles) = 0;
-	virtual int32_t getClockSpeed() const = 0;
+    virtual int32_t getClockSpeed() const = 0;
 	virtual const char *getDeviceName() const = 0;
 	virtual int getDigitiserWidth() const = 0;
 	virtual int getDigitiserHeight() const = 0;
@@ -172,6 +174,7 @@ public:
     virtual void CodecReadData() = 0;
     virtual void CodecWriteData() = 0;
     virtual void playSound() = 0;
+    virtual void recordSound() = 0;
     virtual void OpenSerialinterface() = 0;
 
 //#ifndef __EMSCRIPTEN__

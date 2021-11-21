@@ -14,7 +14,7 @@
 #include "hardware.h"
 #include "etna.h"
 #include <math.h>
-#include <QSoundEffect>
+
 
 #define PALETTE_SIZE 4096 // 4Kbytes
 
@@ -55,6 +55,27 @@ static short alaw2pcm[256] =
       -944,   -912,  -1008,   -976,   -816,   -784,   -880,   -848
 };
 
+static short seg_aend[8] = {0x1F, 0x3F, 0x7F, 0xFF,
+                0x1FF, 0x3FF, 0x7FF, 0xFFF};
+
+static short search(
+   short val,
+   short *table,
+   short size)
+{
+   short i;
+
+   for (i = 0; i < size; i++) {
+      if (val <= *table++)
+     return (i);
+   }
+   return (size);
+}
+
+#define	SEG_SHIFT	(4)		/* Left shift for segment number. */
+#define	QUANT_MASK	(0xf)		/* Quantization field mask. */
+
+
 namespace Windermere {
 class AudioTest;
 class Emulator : public EmuBase {
@@ -85,17 +106,21 @@ public:
 
     // CODEC and Sound
     uint32_t    codr = 0;
-    int         codrCounter=0;
+    int         codrOutputCounter=0;
+    int         codrInputCounter=0;
     uint32_t    confg = 0;
-    uint32_t    coflg = 1; // Receive and transmit fifo are empty
+    uint32_t    coflg = 0; // Receive fifo is not empty and transmit fifo is empty
     uint32_t    bzcont = 0;
     bool        buzzerOn=false;
     float       buzzerVolume=0;
     bool        codecValueOutReady=false;
-    bool        codecValueInReady=false; // Receive fifo is empty
-    bool        codecLastValueRead=true;
-    QAudioSink *m_audioOutput;
-    QIODevice  *m_ioDevice;
+    bool        codecValueInRead=true; // Receive fifo is empty
+    bool        m_recordStart = false;
+  //  bool        codecLastInValueRead=true;
+    QAudioSink  *m_audioOutput;
+    QAudioSource *m_audioInput;
+    QIODevice   *m_inputDevice = nullptr;
+    QIODevice   *m_outputDevice = nullptr;
 
 public:
     void BuzzerStart();
@@ -114,7 +139,10 @@ private:
 
     // CODEC
     QSoundEffect effect;
-    QQueue<unsigned char> m_codecQueue;
+    QQueue<unsigned char> m_outputCodecQueue;
+    QQueue<unsigned char> m_inputCodecQueue;
+
+    QQueue<unsigned char> m_inputOuputTest;
 
     uint32_t getRTC();
 
@@ -158,7 +186,7 @@ public:
     uint32_t getRAMsizeD0() override;
     uint32_t getRAMsizeD1() override;
     void executeUntil(int64_t cycles) override;
-	int32_t getClockSpeed() const override { return CLOCK_SPEED; }
+    int32_t getClockSpeed() const override { return CLOCK_SPEED; }
 	const char *getDeviceName() const override;
 	int getDigitiserWidth() const override;
 	int getDigitiserHeight() const override;
@@ -174,8 +202,10 @@ public:
     void UartWriteData() override;
     void OpenSerialinterface() override;
     void CodecReadData() override;
+    unsigned char linear2alaw(short pcm_val);
     void CodecWriteData() override;
     void playSound() override;
+    void recordSound() override;
 };
 
 }
