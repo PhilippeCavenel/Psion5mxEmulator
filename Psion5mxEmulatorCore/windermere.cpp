@@ -57,7 +57,7 @@ uint32_t Emulator::readReg8(uint32_t reg) {
         pendingInterrupts &= ~(1 << UART1);
         return uart1.readReg8(reg & 0xFFF);
 	} else if ((reg & 0xF00) == 0x700) {
-        pendingInterrupts &= ~(1 << UART2);
+        if (uart2.UART2DATA_fifoBytesAvailable<=0) pendingInterrupts &= ~(1 << UART2);
         return uart2.readReg8(reg & 0xFFF);
 	} else if (reg == TC1CTRL) {
 		return tc1.config;
@@ -94,12 +94,6 @@ uint32_t Emulator::readReg8(uint32_t reg) {
         return pendingInterrupts;
     } else if (reg == INTENS) {
         return interruptMask;
-    } else if ((reg & 0xF00) == 0x600) {
-        pendingInterrupts &= ~(1 << UART1);
-        return uart1.readReg32(reg & 0xFFF);
-    } else if ((reg & 0xF00) == 0x700) {
-        pendingInterrupts &= ~(1 << UART2);
-        return uart2.readReg32(reg & 0xFFF);
     } else if (reg == TC1VAL) {
         return tc1.value;
     } else if (reg == TC2VAL) {
@@ -184,7 +178,7 @@ void Emulator::writeReg8(uint32_t reg, uint32_t value) {
        pendingInterrupts &= ~(1 << UART1);
         uart1.writeReg8(reg & 0xFFF, value);
 	} else if ((reg & 0xF00) == 0x700) {
-       pendingInterrupts &= ~(1 << UART2);
+        if (uart2.UART2DATA_fifoBytesAvailable<=0) pendingInterrupts &= ~(1 << UART2);
         uart2.writeReg8(reg & 0xFFF, value);
 	} else if (reg == TC1CTRL) {
 		tc1.setConfig(value);
@@ -269,12 +263,6 @@ void Emulator::writeReg8(uint32_t reg, uint32_t value) {
     // TEOI = 0x418,
     // STFCLR = 0x41C,
     // E2EOI = 0x420,
-    } else if ((reg & 0xF00) == 0x600) {
-        pendingInterrupts &= ~(1 << UART1);
-        uart1.writeReg32(reg & 0xFFF, value);
-    } else if ((reg & 0xF00) == 0x700) {
-        pendingInterrupts &= ~(1 << UART2);
-        uart2.writeReg32(reg & 0xFFF, value);
     } else if (reg == SSDR) {
         if (value != 0)
             lastSSIRequest = (lastSSIRequest >> 8) | (value & 0xFF00);
@@ -932,31 +920,35 @@ void Emulator::readLCDColorIntoBuffer(uint8_t **lines, bool is32BitOutput) const
 /// \param newval
 ////////////////////////////////////////////////////////////////////////////
 void Emulator::diffPorts(uint32_t oldval, uint32_t newval) {
+
+    /*printf("oldval %x newval %x \n",oldval,newval);
 	uint32_t changes = oldval ^ newval;
-    //if (changes & 1) printf("PRT codec enable: %d\n", newval&1);
-    //if (changes & 2) printf("PRT audio amp enable: %d\n", newval&2);
-    //if (changes & 4) printf("PRT lcd power: %d\n", newval&4);
-    //if (changes & 8) printf("PRT etna door: %d\n", newval&8);
-    //if (changes & 0x10) printf("PRT sled: %d\n", newval&0x10);
-    //if (changes & 0x20) printf("PRT pump pwr2: %d\n", newval&0x20);
-    //if (changes & 0x40) printf("PRT pump pwr1: %d\n", newval&0x40);
-    //if (changes & 0x80) printf("PRT etna err: %d\n", newval&0x80);
-    // if (changes & 0x100) printf("PRT rs-232 rts: %d\n", newval&0x100);fflush(stdout);
-    // if (changes & 0x200) printf("PRT rs-232 dtr toggle: %d\n", newval&0x200);fflush(stdout);
-    // if (changes & 0x400) printf("PRT disable power led: %d\n", newval&0x400);
-    // if (changes & 0x800) printf("PRT enable uart1: %d\n", newval&0x800);fflush(stdout);
-    // if (changes & 0x1000) printf("PRT lcd backlight: %d\n", newval&0x1000);
-    // if (changes & 0x2000) printf("PRT enable uart2: %d\n", newval&0x2000);fflush(stdout);
-    //if (changes & 0x4000) printf("PRT dictaphone: %d\n", newval&0x4000);
+    if (changes & 1) printf("PRT codec enable: %d\n", newval&1);
+    if (changes & 2) printf("PRT audio amp enable: %d\n", newval&2);
+    if (changes & 4) printf("PRT lcd power: %d\n", newval&4);
+    if (changes & 8) printf("PRT etna door: %d\n", newval&8);
+    if (changes & 0x10) printf("PRT sled: %d\n", newval&0x10);
+    if (changes & 0x20) printf("PRT pump pwr2: %d\n", newval&0x20);
+    if (changes & 0x40) printf("PRT pump pwr1: %d\n", newval&0x40);
+    if (changes & 0x80) printf("PRT etna err: %d\n", newval&0x80);
+    if (changes & 0x100) printf("PRT rs-232 rts: %d\n", newval&0x100);fflush(stdout);
+    if (changes & 0x200) printf("PRT rs-232 dtr toggle: %d\n", newval&0x200);fflush(stdout);
+    if (changes & 0x400) printf("PRT disable power led: %d\n", newval&0x400);
+    if (changes & 0x800) printf("PRT enable uart1: %d\n", newval&0x800);fflush(stdout);
+    if (changes & 0x1000) printf("PRT lcd backlight: %d\n", newval&0x1000);
+    if (changes & 0x2000) printf("PRT enable uart2: %d\n", newval&0x2000);fflush(stdout);
+   // if (changes & 0x4000) printf("PRT dictaphone: %d\n", newval&0x4000);
+
     // PROM read process makes this super spammy in stdout
-    //	if (changes & 0x10000) printf("PRT EECS: %d\n", newval&0x10000);
-    //	if (changes & 0x20000) printf("PRT EECLK: %d\n", newval&0x20000);
-    // if (changes & 0x40000) printf("PRT contrast0: %d\n", newval&0x40000);
-    // if (changes & 0x80000) printf("PRT contrast1: %d\n", newval&0x80000);
-    //if (changes & 0x100000) printf("PRT contrast2: %d\n", newval&0x100000);
-    //if (changes & 0x200000) printf("PRT contrast3: %d\n", newval&0x200000);
-    //if (changes & 0x400000) printf("PRT case open: %d\n", newval&0x400000);
-    //if (changes & 0x800000) printf("PRT etna cf power: %d\n", newval&0x800000);
+    if (changes & 0x10000) printf("PRT EECS: %d\n", newval&0x10000);
+    if (changes & 0x20000) printf("PRT EECLK: %d\n", newval&0x20000);
+    if (changes & 0x40000) printf("PRT contrast0: %d\n", newval&0x40000);
+    if (changes & 0x80000) printf("PRT contrast1: %d\n", newval&0x80000);
+    if (changes & 0x100000) printf("PRT contrast2: %d\n", newval&0x100000);
+    if (changes & 0x200000) printf("PRT contrast3: %d\n", newval&0x200000);
+    if (changes & 0x400000) printf("PRT case open: %d\n", newval&0x400000);
+    if (changes & 0x800000) printf("PRT etna cf power: %d\n", newval&0x800000);
+    fflush(stdout);*/
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -1131,14 +1123,7 @@ void Emulator::playSound() {
 
             value=alaw2pcm[m_outputCodecQueue.dequeue()];
             byteArray[byteArrayPtr++]=(value) & 0xFF;
-
-            // TEST TO REMOVE NOT USED HERE
-            m_inputOuputTest.enqueue((value) & 0xFF);
-
             byteArray[byteArrayPtr++]=(value>>8) & 0xFF;
-
-            // TEST TO REMOVE NOT USED HERE
-            m_inputOuputTest.enqueue((value>>8) & 0xFF);
         }
 
         m_outputDevice->write(byteArray,byteArray.length());
@@ -1199,7 +1184,7 @@ unsigned char  Emulator::linear2alaw(short pcm_val)	/* 2's complement (16-bit ra
 }
 
 ////////////////////////////////////////////////////////////////////////////
-/// \brief EMulator::CodecReadData (to record sound) => Not yet tested !
+/// \brief EMulator::CodecReadData (to record sound)
 ////////////////////////////////////////////////////////////////////////////
 void Emulator::CodecReadData() {
 
@@ -1231,18 +1216,6 @@ void Emulator::recordSound() {
             value = value1 + (value2 << 8);
             m_inputCodecQueue.enqueue(linear2alaw(value));
         }
-
-        // TEST TO REMOVE (dequeue) AND TO COMMENT WHEN TESTING
-        short dummy;
-        if (!m_inputOuputTest.empty()) dummy=m_inputOuputTest.dequeue();
-
-       /* TEST
-        while(!m_inputOuputTest.empty()) {
-            if (!m_inputOuputTest.empty()) value1=m_inputOuputTest.dequeue();
-            if (!m_inputOuputTest.empty()) value2=m_inputOuputTest.dequeue();
-            value = value1 + (value2 << 8);
-            m_inputCodecQueue.enqueue(linear2alaw(value));
-        } */
     }
 }
 
@@ -1254,6 +1227,8 @@ void Emulator::UartReadData() {
 
     if (!m_uartReadQueue.isEmpty()) {
         uart2.UART2DATA_valueIn=m_uartReadQueue.dequeue();
+        uart2.UART2DATA_fifoBytesAvailable--;
+        printf("%d ",uart2.UART2DATA_fifoBytesAvailable);fflush(stdout);
         uart2.UART2DATA_lastValueRead=false;
         //printf("r(0x%x) ",uart2.UART2DATA_valueIn);fflush(stdout);
         uart2.UART2FLG_value &= ~uart2.AMBA_UARTFR_RXFE;    // Input fifo is no more empty
@@ -1272,7 +1247,6 @@ void Emulator::UartWriteData() {
     if (uart2.UART2DATA_valueOutReady) {
         while(!uart2.m_uart2WriteQueue.isEmpty()){
             data=uart2.m_uart2WriteQueue.dequeue();
-            //printf("w(0x%x) ",data);fflush(stdout);
             m_serial.write(&data,1);
         }
         uart2.UART2DATA_valueOutReady=false;
@@ -1308,9 +1282,12 @@ void Emulator::OpenSerialinterface() {
        {
 
            //this is called when readyRead() is emitted
+
            char data;
+           printf("\n=>");fflush(stdout);
            while(m_serial.read(&data,1)==1){
-               m_uartReadQueue.enqueue(data);
+                m_uartReadQueue.enqueue(data);
+                uart2.UART2DATA_fifoBytesAvailable++;
            }
            uart2.UART2DATA_valueInReady=!m_uartReadQueue.isEmpty();
        });

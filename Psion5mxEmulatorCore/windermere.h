@@ -116,7 +116,6 @@ public:
     bool        codecValueOutReady=false;
     bool        codecValueInRead=true; // Receive fifo is empty
     bool        m_recordStart = false;
-  //  bool        codecLastInValueRead=true;
     QAudioSink  *m_audioOutput;
     QAudioSource *m_audioInput;
     QIODevice   *m_inputDevice = nullptr;
@@ -141,8 +140,6 @@ private:
     QSoundEffect effect;
     QQueue<unsigned char> m_outputCodecQueue;
     QQueue<unsigned char> m_inputCodecQueue;
-
-    QQueue<unsigned char> m_inputOuputTest;
 
     uint32_t getRTC();
 

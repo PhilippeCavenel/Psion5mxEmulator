@@ -161,6 +161,7 @@ struct UART { // source serial_psionw.h
    // uint32_t UART2FLG_value=AMBA_UARTFR_RXFE |PSIONW_UARTFR_MODEM_ANY; // Flag register (Read only) UARTFLG
    // uint32_t UART2FLG_value=AMBA_UARTFR_RXFE; // Flag register (Read only) UARTFLG
     uint32_t UART2FLG_value=AMBA_UARTFR_RXFE |AMBA_UARTFR_DSR ; // Flag register (Read only) UARTFLG
+    int      UART2DATA_fifoBytesAvailable = 0;
 
     uint32_t UART2INT_value=0;                // Second level interrupt register
     uint32_t UART2INTM_value=0;               // Interrupt mask register
@@ -238,9 +239,13 @@ struct UART { // source serial_psionw.h
         case UART2DATA: // Read input data
            // printf("Read UART2DATA == 0x%x (%c)\n",UART2DATA_valueIn,UART2DATA_valueIn);fflush(stdout);
            // printf("Set received fifo empty =>");
-            writeReg8(UART2FLG,AMBA_UARTFR_RXFE | UART2FLG_value); // Data is read, set received fifo empty
-           // printf("Remove interrupt flag to read data =>");
-            writeReg8(UART2INTR,UART2INTR_value & ~PSIONW_UART_RXINT);
+            if (UART2DATA_fifoBytesAvailable<=0) { // Should be only == 0 but in case of....
+                writeReg8(UART2FLG,AMBA_UARTFR_RXFE | UART2FLG_value); // Data is read, set received fifo empty
+               // printf("Remove interrupt flag to read data =>");
+                writeReg8(UART2INTR,UART2INTR_value & ~PSIONW_UART_RXINT);
+                UART2DATA_fifoBytesAvailable=0;
+            }
+
             UART2DATA_lastValueRead=true;
             return(UART2DATA_valueIn);
         case UART2FCR:
@@ -282,7 +287,7 @@ struct UART { // source serial_psionw.h
             return(UART2INTM_value);
         case UART2INTR:
            // printf("Read UART2INTR == 0x%x\n",UART2INTR_value);fflush(stdout);
-            return(UART2INTR_value & UART2INTM_value);
+           return(UART2INTR_value & UART2INTM_value); // PREVIOUS VALUE
         case UART2TEST1:
            // printf("Read UART2TEST1 == 0x%x\n",UART2TEST1_value);fflush(stdout);
             return(UART2TEST1_value);

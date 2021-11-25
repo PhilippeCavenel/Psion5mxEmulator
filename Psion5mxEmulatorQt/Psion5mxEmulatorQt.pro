@@ -1,13 +1,4 @@
 #-------------------------------------------------
-# Code modified version Copyright (c) 2021 Philippe Cavenel
-#
-# This Source Code Form is subject to the terms of the
-# GNU GENERAL PUBLIC LICENSE Version 2, June 1991.
-#
-# The Psion-specific code is copyright (c) 2019 Ash Wolf.
-# The ARM disassembly code is a modified version of the one used in mGBA by endrift.
-# WindEmu is available under the Mozilla Public License 2.0.
-#-------------------------------------------------
 #
 # Project created by QtCreator 2019-12-18T16:17:36
 #
@@ -40,8 +31,6 @@ HEADERS += \
         mainwindow.h \
         pdascreenwindow.h
 
-FORMS +=
-
 ANDROID_PACKAGE_SOURCE_DIR = $$PWD/pkg_src
 
 
@@ -50,18 +39,13 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../Psion5mxEmulatorCore/release/ -lPsion5mxEmulatorCore
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../Psion5mxEmulatorCore/debug/ -lPsion5mxEmulatorCore
-else:unix: LIBS += -L$$OUT_PWD/../WindCore/ -lPsion5mxEmulatorCore
+LIBS += -L$$OUT_PWD/../Psion5mxEmulatorCore/ -lPsion5mxEmulatorCore
+INCLUDEPATH += $$PWD
+DEPENDPATH += $$PWD
 
-INCLUDEPATH += $$PWD/../WindCore
-DEPENDPATH += $$PWD/../WindCore
-
-win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../Psion5mxEmulatorCore/release/libPsion5mxEmulatorCore.a
-else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../Psion5mxEmulatorCore/debug/libPsion5mxEmulatorCore.a
-else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../Psion5mxEmulatorCore/release/Psion5mxEmulatorCore.lib
-else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../Psion5mxEmulatorCore/debug/Psion5mxEmulatorCore.lib
-else:unix: PRE_TARGETDEPS += $$OUT_PWD/../WPsion5mxEmulatorCore/libPsion5mxEmulatorCore.a
+win32-g++:PRE_TARGETDEPS += $$OUT_PWD/../Psion5mxEmulatorCore/libPsion5mxEmulatorCore.a
+else:win32:!win32-g++: PRE_TARGETDEPS += $$OUT_PWD/../Psion5mxEmulatorCore/Psion5mxEmulatorCore.lib
+else:unix:  PRE_TARGETDEPS += $$OUT_PWD/../Psion5mxEmulatorCore/libPsion5mxEmulatorCore.a
 
 DISTFILES += \
     pkg_src/AndroidManifest.xml \

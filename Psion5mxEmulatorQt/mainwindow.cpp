@@ -58,7 +58,7 @@ void MainWindow::execTimerMainLoop()
         if (emu->m_screenRefresh) {
             pdaScreen.updateScreen();
             emu->m_screenRefresh=false;
-        }
+        }      
     }
 }
 void MainWindow::execTimerCodec()
